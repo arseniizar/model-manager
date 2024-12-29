@@ -39,7 +39,7 @@ public class ModelsTab {
         JLabel dataHeader = new JLabel(" Data and Models");
         dataHeader.setFont(new Font("SansSerif", Font.BOLD, 16));
         dataHeader.setIcon(new FlatSVGIcon(getClass().getResource("/svgs/classgrp/groupByClass_dark.svg")));
-        dataHeader.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10)); // Add padding to the header
+        dataHeader.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
         leftPanel.add(dataHeader, BorderLayout.NORTH);
         leftPanel.add(dataSplitPane, BorderLayout.CENTER);
 
@@ -55,7 +55,7 @@ public class ModelsTab {
     }
 
     private JPanel createRightPanel(JList<String> modelsJList, JList<String> dataJList) {
-        JTextArea descriptionArea = new JTextArea(); // Shared description area
+        JTextArea descriptionArea = new JTextArea();
         JPanel descriptionPanel = Utilities.createDescriptionPanel(descriptionArea);
 
         JPanel codePanel = createCodePanel();
@@ -67,7 +67,7 @@ public class ModelsTab {
         JSplitPane rightSplitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, descriptionSplitPane, codePanel);
         rightSplitPane.setResizeWeight(0.25);
 
-        // Setup model selection listener to update descriptionArea
+
         Utilities.setupModelSelectionListener(modelsJList, descriptionPanel,
                 (RSyntaxTextArea) ((RTextScrollPane) codePanel.getComponent(1)).getViewport().getView(),
                 controllerManager.getController(), descriptionArea);
@@ -86,7 +86,7 @@ public class ModelsTab {
         JLabel codeHeader = new JLabel(" Java Code");
         codeHeader.setFont(new Font("SansSerif", Font.BOLD, 16));
         codeHeader.setIcon(new FlatSVGIcon(getClass().getResource("/svgs/jav/java_dark.svg")));
-        codeHeader.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10)); // Add padding to the header
+        codeHeader.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
         codePanel.add(codeHeader, BorderLayout.NORTH);
 
         RSyntaxTextArea modelCode = new RSyntaxTextArea();
@@ -111,7 +111,7 @@ public class ModelsTab {
             ListModel<String> listModel = modelsJList.getModel();
             int targetIndex = -1;
 
-            // Find the index of the model with the given name
+
             for (int i = 0; i < listModel.getSize(); i++) {
                 if (listModel.getElementAt(i).equals(defaultModelName)) {
                     targetIndex = i;
@@ -119,12 +119,12 @@ public class ModelsTab {
                 }
             }
 
-            if (targetIndex != -1) { // If the model is found
-                modelsJList.setSelectedIndex(targetIndex); // Select the model
+            if (targetIndex != -1) {
+                modelsJList.setSelectedIndex(targetIndex);
                 String selectedModel = modelsJList.getSelectedValue();
                 if (selectedModel != null) {
                     try {
-                        controllerManager.getController().setModel(selectedModel); // Set the model in the Controller
+                        controllerManager.getController().setModel(selectedModel);
                     } catch (Exception ex) {
                         JOptionPane.showMessageDialog(
                                 null,
@@ -151,7 +151,7 @@ public class ModelsTab {
             ListModel<String> listModel = dataJList.getModel();
             int targetIndex = -1;
 
-            // Find the index of the data file with the given name
+
             for (int i = 0; i < listModel.getSize(); i++) {
                 if (listModel.getElementAt(i).equals(defaultDataFileName)) {
                     targetIndex = i;
@@ -159,18 +159,18 @@ public class ModelsTab {
                 }
             }
 
-            if (targetIndex != -1) { // If the data file is found
-                dataJList.setSelectedIndex(targetIndex); // Select the data file
+            if (targetIndex != -1) {
+                dataJList.setSelectedIndex(targetIndex);
                 String selectedDataFile = dataJList.getSelectedValue();
                 if (selectedDataFile != null) {
                     try {
                         controllerManager.getController().readDataFrom("src/main/resources/data/" + selectedDataFile);
-//                        JOptionPane.showMessageDialog(
-//                                null,
-//                                "Default data '" + defaultDataFileName + "' loaded successfully.",
-//                                "Success",
-//                                JOptionPane.INFORMATION_MESSAGE
-//                        );
+
+
+
+
+
+
                     } catch (Exception ex) {
                         JOptionPane.showMessageDialog(
                                 null,

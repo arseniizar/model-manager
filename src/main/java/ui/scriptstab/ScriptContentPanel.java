@@ -43,7 +43,7 @@ public class ScriptContentPanel {
     }
 
     public JPanel createPanel() {
-        // Chosen Script Panel
+
         JPanel chosenScriptPanel = Utilities.createPanelWithHeader(
                 "Chosen Script Content",
                 "/svgs/groovy/groovy_dark.svg",
@@ -51,7 +51,7 @@ public class ScriptContentPanel {
                 new RTextScrollPane(chosenScriptArea)
         );
 
-        // Writable Script Panel
+
         JPanel writableScriptPanel = Utilities.createPanelWithHeader(
                 "Write a Script",
                 "/svgs/config/config_dark.svg",
@@ -60,14 +60,14 @@ public class ScriptContentPanel {
                 new RTextScrollPane(writableScriptArea)
         );
 
-        // Vertical Split Pane for Chosen and Writable Script Panels
-        JSplitPane scriptSplitPane = new JSplitPane(JSplitPane.VERTICAL_SPLIT, chosenScriptPanel, writableScriptPanel);
-        scriptSplitPane.setResizeWeight(0.5); // Allocate 50% space for each panel
-        scriptSplitPane.setDividerSize(8); // Customize the divider size for better user experience
 
-        // Adding margins and padding
+        JSplitPane scriptSplitPane = new JSplitPane(JSplitPane.VERTICAL_SPLIT, chosenScriptPanel, writableScriptPanel);
+        scriptSplitPane.setResizeWeight(0.5);
+        scriptSplitPane.setDividerSize(8);
+
+
         JPanel mainContentPanel = new JPanel(new BorderLayout());
-        mainContentPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10)); // Add padding around the panel
+        mainContentPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
         mainContentPanel.add(scriptSplitPane, BorderLayout.CENTER);
 
         return mainContentPanel;
@@ -122,7 +122,7 @@ public class ScriptContentPanel {
                     JOptionPane.INFORMATION_MESSAGE
             );
 
-            // Reload results list
+
             Utilities.reloadResultsList(resultsJList);
 
         } catch (Exception ex) {
@@ -192,7 +192,7 @@ public class ScriptContentPanel {
                     JOptionPane.INFORMATION_MESSAGE
             );
 
-            // Reload results list
+
             Utilities.reloadResultsList(resultsJList);
 
         } catch (Exception ex) {
@@ -201,18 +201,12 @@ public class ScriptContentPanel {
         }
     }
 
-    /**
-     * Validates a Groovy script for syntax correctness.
-     *
-     * @param scriptContent the script content to validate
-     * @return true if the script is valid, false otherwise
-     */
     private boolean isValidGroovyScript(String scriptContent) {
         try {
             new groovy.lang.GroovyShell().parse(scriptContent);
-            return true; // Valid script
+            return true;
         } catch (Exception ex) {
-            return false; // Syntax error
+            return false;
         }
     }
 

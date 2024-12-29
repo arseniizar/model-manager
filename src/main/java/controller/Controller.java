@@ -17,17 +17,14 @@ public class Controller {
     private Object model;
     private String modelName;
     private Map<String, Object> variables = new HashMap<>();
-    private Map<String, double[]> dynamicFields = new HashMap<>();
+    private final Map<String, double[]> dynamicFields = new HashMap<>();
     private String currentDataPath;
-    private Runnable onConfigurationChanged;// Field for storing the current data path
+    private Runnable onConfigurationChanged;
 
     public Controller(String modelName) throws Exception {
         initializeModel(modelName);
     }
 
-    /**
-     * Initializes the model dynamically using reflection.
-     */
     private void initializeModel(String modelName) throws Exception {
         try {
             this.modelName = "models." + modelName; // Adjust for package
@@ -43,16 +40,10 @@ public class Controller {
         this.onConfigurationChanged = listener;
     }
 
-    /**
-     * Sets the current data path.
-     */
     public void setCurrentDataPath(String dataPath) {
         this.currentDataPath = dataPath;
     }
 
-    /**
-     * Checks if a field is annotated with @Bind and belongs to the model.
-     */
     private boolean isModelField(String fieldName) {
         try {
             Field field = findFieldInHierarchy(fieldName);
@@ -63,16 +54,10 @@ public class Controller {
     }
 
 
-    /**
-     * Gets the current data path.
-     */
     public String getCurrentDataPath() {
         return this.currentDataPath;
     }
 
-    /**
-     * Reads data from the file set in the current data path.
-     */
     public void readDataFromCurrentPath() throws Exception {
         if (currentDataPath == null || currentDataPath.isEmpty()) {
             throw new IllegalArgumentException("Data file path is not set.");
@@ -80,17 +65,15 @@ public class Controller {
         readDataFrom(currentDataPath);
     }
 
-    /**
-     * Reads data from a specified file.
-     */
     public void readDataFrom(String fileName) throws Exception {
-        this.currentDataPath = fileName; // Update the current data path when reading data
-        File file = new File(fileName); // Support absolute or relative file paths
+        this.currentDataPath = fileName;
+        File file = new File(fileName);
         if (!file.exists()) throw new FileNotFoundException("Data file not found: " + fileName);
 
         try (BufferedReader br = new BufferedReader(new FileReader(file))) {
             String line;
             while ((line = br.readLine()) != null) {
+                if (line.isEmpty()) break;
                 String[] parts = line.split("\\s+");
                 if (parts[0].equals("LATA")) {
                     int LL = parts.length - 1;
@@ -110,9 +93,7 @@ public class Controller {
         }
     }
 
-    /**
-     * Runs the model.
-     */
+
     public Controller runModel() throws Exception {
         model.getClass().getMethod("run").invoke(model);
         if (onConfigurationChanged != null) {
@@ -121,9 +102,6 @@ public class Controller {
         return this;
     }
 
-    /**
-     * Gets the model's description.
-     */
     public String getModelDescription() {
         try {
             Method getDescriptionMethod = model.getClass().getMethod("getDescription");
@@ -134,24 +112,15 @@ public class Controller {
         }
     }
 
-    /**
-     * Gets the current model instance.
-     */
     public Object getModel() {
         return model;
     }
 
-    /**
-     * Sets and initializes a new model by name.
-     */
     public Controller setModel(String modelName) throws Exception {
         initializeModel(modelName);
         return this;
     }
 
-    /**
-     * Runs a Groovy script from a file.
-     */
     public Controller runScriptFromFile(String scriptFileName) throws Exception {
         File file = new File(scriptFileName); // Adjusted for direct file access
         if (!file.exists()) {
@@ -171,24 +140,19 @@ public class Controller {
 
     private void validateScript(String script) throws IllegalArgumentException {
         try {
-            // Create a new GroovyShell for validation
             GroovyShell validationShell = new GroovyShell();
-            validationShell.parse(script); // Parse the script for syntax errors
+            validationShell.parse(script);
         } catch (Exception ex) {
             throw new IllegalArgumentException("Invalid Groovy script: " + ex.getMessage(), ex);
         }
     }
 
 
-    /**
-     * Runs a Groovy script.
-     */
     public Controller runScript(String script) throws Exception {
         validateScript(script);
 
         Binding binding = new Binding();
 
-        // Use reflection to ensure all fields in the inheritance hierarchy are initialized
         Class<?> clazz = model.getClass();
         while (clazz != null) {
             for (Field field : clazz.getDeclaredFields()) {
@@ -196,12 +160,11 @@ public class Controller {
                     field.setAccessible(true);
                     Object value = field.get(model);
 
-                    // Dynamically initialize arrays
                     if (value == null && field.getType().isArray() && field.getType().getComponentType() == double.class) {
                         int LL = getBindFieldValue("LL") != null ? (int) getBindFieldValue("LL") : 0;
                         if (LL > 0) {
-                            field.set(model, new double[LL]); // Initialize array
-                            value = field.get(model); // Update value
+                            field.set(model, new double[LL]);
+                            value = field.get(model);
                         } else {
                             throw new IllegalStateException("Field '" + field.getName() + "' is an uninitialized array but LL is not set.");
                         }
@@ -210,28 +173,28 @@ public class Controller {
                     binding.setVariable(field.getName(), value);
                 }
             }
-            clazz = clazz.getSuperclass(); // Traverse to the superclass
+            clazz = clazz.getSuperclass();
         }
 
-        // Include dynamic fields in the binding
         for (Map.Entry<String, double[]> entry : dynamicFields.entrySet()) {
             binding.setVariable(entry.getKey(), entry.getValue());
         }
 
-        binding.setVariable("LL", getBindFieldValue("LL")); // Ensure LL is available
+        binding.setVariable("LL", getBindFieldValue("LL"));
 
-        // Modify GroovyShell to handle divisions and operations gracefully
         GroovyShell shell = new GroovyShell(binding);
-        shell.setProperty("safeDivide", (BiFunction<Double, Double, Double>) (a, b) -> b == 0 ? 0.0 : a / b); // Safe divide function
+        shell.setProperty("safeDivide", (BiFunction<Double, Double, Double>) (a, b) -> b == 0 ? 0.0 : a / b);
 
-        // Add helper script to allow safe division
         String helperScript = "def safeDivide(a, b) { return b == 0 ? 0 : a / b }";
 
-        // Run the script
         shell.evaluate(helperScript);
-        shell.evaluate(script);
 
-        // Reflectively update the model fields based on script execution
+        try {
+            shell.evaluate(script);
+        } catch (groovy.lang.MissingPropertyException e) {
+            throw new IllegalArgumentException("Undefined variable in script: " + e.getProperty());
+        }
+
         clazz = model.getClass();
         while (clazz != null) {
             for (Field field : clazz.getDeclaredFields()) {
@@ -242,18 +205,15 @@ public class Controller {
                     if (value instanceof double[]) {
                         double[] values = (double[]) value;
 
-                        // Validate the values (ensure no NaN or Infinity)
                         validateValues(values, varName);
 
-                        // Update model field
                         field.set(model, values);
                     }
                 }
             }
-            clazz = clazz.getSuperclass(); // Traverse to the superclass
+            clazz = clazz.getSuperclass();
         }
 
-        // Update dynamic fields based on script execution
         for (Object key : binding.getVariables().keySet()) {
             String varName = (String) key;
             if (!varName.matches("[a-z]") && !isModelField(varName)) {
@@ -261,10 +221,8 @@ public class Controller {
                 if (value instanceof double[]) {
                     double[] values = (double[]) value;
 
-                    // Validate the values (ensure no NaN or Infinity)
                     validateValues(values, varName);
 
-                    // Update dynamic fields or initialize new ones
                     dynamicFields.put(varName, values);
                 }
             }
@@ -274,20 +232,20 @@ public class Controller {
     }
 
 
-    /**
-     * Gets model results as TSV.
-     */
     public String getResultsAsTsv() throws Exception {
         StringBuilder result = new StringBuilder("LATA\t" + getBindFieldValue("LL") + "\n");
 
-        // Include @annotations.Bind fields
         for (Field field : model.getClass().getDeclaredFields()) {
             if (field.isAnnotationPresent(Bind.class) && field.getType().isArray() && field.getType().getComponentType() == double.class) {
                 field.setAccessible(true);
                 result.append(field.getName()).append("\t");
                 double[] values = (double[]) field.get(model);
-                for (double val : values) {
-                    result.append(val).append("\t");
+                if (values != null) {
+                    for (double val : values) {
+                        result.append(val).append("\t");
+                    }
+                } else {
+                    result.append("null");
                 }
                 result.append("\n");
             }
@@ -295,8 +253,12 @@ public class Controller {
 
         for (Map.Entry<String, double[]> entry : dynamicFields.entrySet()) {
             result.append(entry.getKey()).append("\t");
-            for (double val : entry.getValue()) {
-                result.append(val).append("\t");
+            if (entry.getValue() != null) {
+                for (double val : entry.getValue()) {
+                    result.append(val).append("\t");
+                }
+            } else {
+                result.append("null");
             }
             result.append("\n");
         }
@@ -304,9 +266,7 @@ public class Controller {
         return result.toString();
     }
 
-    /**
-     * Validates values in a double array for NaN or infinity.
-     */
+
     private void validateValues(double[] values, String fieldName) {
         for (int i = 0; i < values.length; i++) {
             if (Double.isNaN(values[i]) || Double.isInfinite(values[i])) {
@@ -317,10 +277,7 @@ public class Controller {
         }
     }
 
-    /**
-     * Gets a field value from the class hierarchy.
-     */
-    private Object getBindFieldValue(String fieldName) throws Exception {
+    public Object getBindFieldValue(String fieldName) throws Exception {
         Field field = findFieldInHierarchy(fieldName);
         if (field == null) throw new NoSuchFieldException("Field not found: " + fieldName);
         if (field.isAnnotationPresent(Bind.class)) {
@@ -330,21 +287,21 @@ public class Controller {
         throw new IllegalArgumentException("Field " + fieldName + " is not annotated with @Bind");
     }
 
-    /**
-     * Sets a field value in the class hierarchy.
-     */
-    private void setBindField(Object fieldName, Object value) throws Exception {
+    public void setBindField(Object fieldName, Object value) throws Exception {
         Field field = findFieldInHierarchy((String) fieldName);
         if (field == null) throw new NoSuchFieldException("Field not found: " + fieldName);
         if (field.isAnnotationPresent(Bind.class)) {
             field.setAccessible(true);
+            if ("LL".equals(fieldName)) {
+                int LLValue = (int) value;
+                if (LLValue <= 0) {
+                    throw new IllegalArgumentException("LL must be greater than zero.");
+                }
+            }
             field.set(model, value);
         }
     }
 
-    /**
-     * Finds a field in the class hierarchy.
-     */
     private Field findFieldInHierarchy(String fieldName) {
         Class<?> clazz = model.getClass();
         while (clazz != null) {

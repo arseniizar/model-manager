@@ -59,7 +59,7 @@ public class ConfigurationPanel {
         try {
             StringBuilder configContent = new StringBuilder();
 
-            // Current data and model
+
             String currentData = controller.getCurrentDataPath() != null ? controller.getCurrentDataPath() : "None";
             String currentModel = controller.getModel() != null
                     ? controller.getModel().getClass().getSimpleName()
@@ -69,12 +69,12 @@ public class ConfigurationPanel {
             configContent.append("Current Data: ").append(currentData).append("\n");
             configContent.append("Current Model: ").append(currentModel).append("\n\n");
 
-            // Model fields and types
+
             configContent.append("Model Fields:\n");
             Class<?> modelClass = controller.getModel().getClass();
             while (modelClass != null) {
                 for (Field field : modelClass.getDeclaredFields()) {
-                    if (field.isAnnotationPresent(Bind.class)) { // Only include fields annotated with @Bind
+                    if (field.isAnnotationPresent(Bind.class)) {
                         field.setAccessible(true);
                         configContent.append("- ").append(field.getName())
                                 .append(" (").append(field.getType().getSimpleName()).append(")\n");

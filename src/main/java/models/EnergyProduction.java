@@ -4,10 +4,10 @@ import annotations.Bind;
 
 public class EnergyProduction extends Model {
     @Bind
-    private double[] growthSolar, growthWind, growthHydro; // energy growth rates
+    private double[] growthSolar, growthWind, growthHydro;
     @Bind
-    private double[] solarEnergy, windEnergy, hydroEnergy, totalEnergy; // energy production
-    private double temp; // auxiliary field, not bound to input/output
+    private double[] solarEnergy, windEnergy, hydroEnergy, totalEnergy;
+    private double temp;
 
     public EnergyProduction() {
         super("EnergyProduction", "This model focuses on simulating " +
