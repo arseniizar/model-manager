@@ -51,7 +51,7 @@ public class ScriptListPanel {
         fileChooser.setDialogTitle("Select Script File to Run");
         fileChooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
 
-        // Filter to show only .groovy files
+
         fileChooser.setFileFilter(new javax.swing.filechooser.FileNameExtensionFilter("Groovy Scripts", "groovy"));
 
         int returnValue = fileChooser.showOpenDialog(null);
@@ -60,7 +60,7 @@ public class ScriptListPanel {
                 Path selectedFile = fileChooser.getSelectedFile().toPath();
                 String scriptContent = Files.readString(selectedFile);
 
-                // Check if script is valid
+
                 if (!Utilities.isValidGroovyScript(scriptContent)) {
                     JOptionPane.showMessageDialog(
                             null,
@@ -71,18 +71,18 @@ public class ScriptListPanel {
                     return;
                 }
 
-                // Run the script
+
                 Controller controller = controllerManager.getController();
                 controller.runScript(scriptContent);
 
-                // Save results
+
                 String scriptName = selectedFile.getFileName().toString().replace(".groovy", "");
                 String timestamp = String.valueOf(System.currentTimeMillis());
                 String resultFileName = "res_" + scriptName + "_" + timestamp + ".txt";
                 String resultFilePath = "src/main/resources/results/" + resultFileName;
                 Files.write(Path.of(resultFilePath), controller.getResultsAsTsv().getBytes());
 
-                // Update script output
+
                 scriptOutputListener.accept("Script executed successfully:\n" + controller.getResultsAsTsv());
 
                 JOptionPane.showMessageDialog(
@@ -92,7 +92,7 @@ public class ScriptListPanel {
                         JOptionPane.INFORMATION_MESSAGE
                 );
 
-                // Reload results list
+
                Utilities.reloadResultsList(resultsJList);
             } catch (Exception ex) {
                 JOptionPane.showMessageDialog(

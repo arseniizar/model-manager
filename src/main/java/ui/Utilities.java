@@ -81,8 +81,8 @@ public class Utilities {
         JLabel descriptionHeader = new JLabel(" Description");
         descriptionHeader.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
         descriptionHeader.setFont(new Font("SansSerif", Font.BOLD, 16));
-        descriptionArea.setWrapStyleWord(true); // Wrap at word boundaries
-        descriptionArea.setLineWrap(true);     // Enable line wrapping
+        descriptionArea.setWrapStyleWord(true);
+        descriptionArea.setLineWrap(true);
         descriptionHeader.setIcon(new FlatSVGIcon(UI.class.getResource("/svgs/text/text_dark.svg")));
         descriptionPanel.add(descriptionHeader, BorderLayout.NORTH);
 
@@ -97,44 +97,44 @@ public class Utilities {
     public static JPanel createDataContentPanel() {
         JPanel dataContentPanel = new JPanel(new BorderLayout());
 
-        // Create a header
+
         JLabel dataHeader = new JLabel(" Data Content");
         dataHeader.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
         dataHeader.setFont(new Font("SansSerif", Font.BOLD, 16));
         dataHeader.setIcon(new FlatSVGIcon(UI.class.getResource("/svgs/text/text_dark.svg")));
         dataContentPanel.add(dataHeader, BorderLayout.NORTH);
 
-        // Create a custom table model to make cells uneditable
+
         DefaultTableModel tableModel = new DefaultTableModel() {
             @Override
             public boolean isCellEditable(int row, int column) {
-                return false; // All cells are uneditable
+                return false;
             }
         };
 
-        // Create the table and set its model
+
         JTable dataTable = new JTable(tableModel);
         dataTable.setFont(new Font("SansSerif", Font.PLAIN, 14));
         dataTable.getTableHeader().setFont(new Font("SansSerif", Font.BOLD, 14));
         dataTable.setFillsViewportHeight(true);
-        dataTable.setAutoResizeMode(JTable.AUTO_RESIZE_OFF); // Disable automatic column resizing
+        dataTable.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
 
-        // Center align table data
+
         DefaultTableCellRenderer centerRenderer = new DefaultTableCellRenderer();
         centerRenderer.setHorizontalAlignment(SwingConstants.CENTER);
         dataTable.setDefaultRenderer(Object.class, centerRenderer);
 
-        // Wrap the table in a scroll pane
+
         JScrollPane scrollPane = new JScrollPane(dataTable);
         scrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_AS_NEEDED);
         scrollPane.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED);
 
-        // Set the preferred viewport size to limit the table height
+
         dataTable.setPreferredScrollableViewportSize(new Dimension(dataTable.getPreferredSize().width, 120));
 
         dataContentPanel.add(scrollPane, BorderLayout.CENTER);
 
-        // Store the table as a client property for later updates
+
         dataContentPanel.putClientProperty("dataTable", dataTable);
 
         return dataContentPanel;
@@ -144,16 +144,16 @@ public class Utilities {
     public static void updateDataContentPanel(JPanel dataContentPanel, String[][] data, String[] columnNames) {
         JTable dataTable = (JTable) dataContentPanel.getClientProperty("dataTable");
         if (dataTable != null) {
-            // Use a DefaultTableModel to make the table non-editable
+
             DefaultTableModel tableModel = new DefaultTableModel(data, columnNames) {
                 @Override
                 public boolean isCellEditable(int row, int column) {
-                    return false; // Make the cells non-editable
+                    return false;
                 }
             };
             dataTable.setModel(tableModel);
 
-            // Center-align the content
+
             DefaultTableCellRenderer centerRenderer = new DefaultTableCellRenderer();
             centerRenderer.setHorizontalAlignment(SwingConstants.CENTER);
             for (int i = 0; i < dataTable.getColumnCount(); i++) {
@@ -177,10 +177,10 @@ public class Utilities {
 
                         controller.setModel(selectedModel);
 
-                        // Set description from the model
+
                         descriptionArea.setText(controller.getModelDescription());
 
-                        // Set code in the code viewer
+
                         modelCodeArea.setText(code);
                     } catch (Exception ex) {
                         descriptionArea.setText("Could not load model description.");
@@ -204,11 +204,11 @@ public class Utilities {
                 String selectedData = dataJList.getSelectedValue();
                 if (selectedData != null) {
                     try {
-                        // Construct the path to the selected data file
+
                         String path = "src/main/resources/data/" + selectedData;
                         controller.setCurrentDataPath(path);
 
-                        // Read the file content
+
                         List<String> lines = Files.readAllLines(Paths.get(path));
                         if (!lines.isEmpty()) {
                             // Extract column headers from the first line
@@ -363,10 +363,8 @@ public class Utilities {
                 }
 
                 try {
-                    // Add "package scripts;" as the first line of the script
                     String fullScript = "package scripts\n\n" + scriptContent;
 
-                    // Save the script to the resources/scripts directory
                     String outputPath = "src/main/resources/scripts/" + scriptName;
                     Files.write(Paths.get(outputPath), fullScript.getBytes());
 

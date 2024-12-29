@@ -21,17 +21,14 @@ public class ResultsTab {
     public JPanel createPanel() {
         JPanel resultsPanel = new JPanel(new BorderLayout());
 
-        // Add an icon to the header
         JLabel resultsHeader = new JLabel(" Results");
         resultsHeader.setFont(new Font("SansSerif", Font.BOLD, 16));
         resultsHeader.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
-        resultsHeader.setIcon(new FlatSVGIcon(getClass().getResource("/svgs/dir/projectDirectory_dark.svg"))); // Header icon
+        resultsHeader.setIcon(new FlatSVGIcon(getClass().getResource("/svgs/dir/projectDirectory_dark.svg")));
 
-        // Create the JList for displaying results
         resultFilesList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         resultFilesList.setFont(new Font("SansSerif", Font.PLAIN, 14));
 
-        // Set a custom renderer to add icons to the list items
         resultFilesList.setCellRenderer(new DefaultListCellRenderer() {
             private final Icon resultIcon = new FlatSVGIcon(getClass().getResource("/svgs/text/text_dark.svg"));
 
@@ -44,18 +41,18 @@ public class ResultsTab {
             }
         });
 
-        // Wrap the JList in a JScrollPane for scrolling
+
         JScrollPane resultsScrollPane = new JScrollPane(resultFilesList);
         resultsScrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
         resultsScrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
 
-        // Display the content of the selected result on the right
+
         JTextArea resultContentArea = new JTextArea();
         resultContentArea.setEditable(false);
         resultContentArea.setFont(new Font("SansSerif", Font.PLAIN, 14));
         JScrollPane contentScrollPane = new JScrollPane(resultContentArea);
 
-        // Add selection listener to the results list
+
         resultFilesList.addListSelectionListener(e -> {
             if (!e.getValueIsAdjusting()) {
                 String selectedResult = resultFilesList.getSelectedValue();
@@ -73,9 +70,9 @@ public class ResultsTab {
             }
         });
 
-        // Create a split pane to divide results list and result content
+
         JSplitPane splitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, resultsScrollPane, contentScrollPane);
-        splitPane.setResizeWeight(0.3); // Allocate 30% to the results list and 70% to the content area
+        splitPane.setResizeWeight(0.3);
 
         resultsPanel.add(resultsHeader, BorderLayout.NORTH);
         resultsPanel.add(splitPane, BorderLayout.CENTER);

@@ -16,19 +16,19 @@ public class ActionPanel {
     public JPanel createPanel() {
         JPanel actionPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
 
-        // "Run Model" Button
+
         JButton runModelButton = Utilities.createStyledRunButton();
         runModelButton.setText("Run Model");
         runModelButton.setIcon(new FlatSVGIcon(getClass().getResource("/svgs/run/run_dark.svg")));
         runModelButton.addActionListener(e -> handleRunModel());
 
-        // "Read from Data" Button
+
         JButton readDataButton = Utilities.createStyledRunButton();
         readDataButton.setText("Read from Data");
         readDataButton.setIcon(new FlatSVGIcon(getClass().getResource("/svgs/run/run_dark.svg")));
         readDataButton.addActionListener(e -> handleReadData());
 
-        // Add Buttons to the Panel
+
         actionPanel.add(readDataButton);
         actionPanel.add(runModelButton);
 
@@ -47,7 +47,7 @@ public class ActionPanel {
 
     private void handleReadData() {
         try {
-            // Use the current data path set in the Controller
+
             controller.readDataFromCurrentPath();
             showMessage("Data has been successfully read from: " + controller.getCurrentDataPath(),
                     "Success", JOptionPane.INFORMATION_MESSAGE);

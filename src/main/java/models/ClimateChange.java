@@ -4,10 +4,10 @@ import annotations.Bind;
 
 public class ClimateChange extends Model {
     @Bind
-    private double[] co2EmissionRate, absorptionRate, temperatureChange; // climate indicators
+    private double[] co2EmissionRate, absorptionRate, temperatureChange;
     @Bind
-    private double[] co2Level, globalTemperature; // global CO2 level and temperature
-    private double temp; // auxiliary field, not bound to input/output
+    private double[] co2Level, globalTemperature;
+    private double temp;
 
     public ClimateChange() {
         super("ClimateChange", "This model simulates " +

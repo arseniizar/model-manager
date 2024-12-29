@@ -4,10 +4,10 @@ import annotations.Bind;
 
 public class DiseaseSpread extends Model {
     @Bind
-    private double[] transmissionRate, recoveryRate, deathRate; // disease spread parameters
+    private double[] transmissionRate, recoveryRate, deathRate;
     @Bind
-    private double[] susceptible, infected, recovered, deceased; // populations
-    private double temp; // auxiliary field, not bound to input/output
+    private double[] susceptible, infected, recovered, deceased;
+    private double temp;
 
     public DiseaseSpread() {
         super("DiseaseSpread", "This model simulates the spread " +

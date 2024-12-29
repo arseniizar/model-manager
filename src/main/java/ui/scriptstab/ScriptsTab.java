@@ -13,7 +13,7 @@ public class ScriptsTab {
     private final ScriptContentPanel scriptContentPanel;
     private final ScriptOutputPanel scriptOutputPanel;
     private final ResultsTab resultsTab;
-    private final ConfigurationPanel configurationPanel; // Add ConfigurationPanel
+    private final ConfigurationPanel configurationPanel;
 
     public ScriptsTab(ControllerManager controllerManager, ResultsTab resultsTab, ConfigurationPanel configurationPanel) {
         this.controllerManager = controllerManager;
@@ -21,33 +21,33 @@ public class ScriptsTab {
         this.scriptListPanel = new ScriptListPanel(controllerManager, resultsTab.getResultFilesList());
         this.scriptContentPanel = new ScriptContentPanel(controllerManager, scriptListPanel.getScriptsList(), resultsTab.getResultFilesList());
         this.scriptOutputPanel = new ScriptOutputPanel();
-        this.configurationPanel = configurationPanel; // Initialize ConfigurationPanel
+        this.configurationPanel = configurationPanel;
     }
 
     public JPanel createPanel() {
         JPanel scriptsPanel = new JPanel(new BorderLayout());
 
-        // Vertical split pane for "Chosen Script Content" and "Write a Script"
+
         JSplitPane contentSplitPane = new JSplitPane(JSplitPane.VERTICAL_SPLIT,
                 scriptContentPanel.createPanel(), null);
-        contentSplitPane.setResizeWeight(0.7); // Allocate more space to script content
+        contentSplitPane.setResizeWeight(0.7);
 
-        // Horizontal split pane for "Content Split" on the left and "Configuration" on the right
+
         JSplitPane leftSplitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT,
                 contentSplitPane, configurationPanel.createPanel());
-        leftSplitPane.setResizeWeight(0.8); // Allocate 80% to content and 20% to configuration
+        leftSplitPane.setResizeWeight(0.8);
         leftSplitPane.setDividerSize(5);
 
-        // Create a vertical split pane for "Left Split (Content and Configuration)" and "Script Output"
+
         JSplitPane mainSplitPane = new JSplitPane(JSplitPane.VERTICAL_SPLIT,
                 leftSplitPane, scriptOutputPanel.createPanel());
-        mainSplitPane.setResizeWeight(0.5); // Split evenly between top (Content + Configuration) and bottom (Script Output)
+        mainSplitPane.setResizeWeight(0.5);
 
-        // Add left panel for script list and right panel for main content
+
         scriptsPanel.add(scriptListPanel.createPanel(scriptOutputPanel::updateOutput), BorderLayout.WEST);
         scriptsPanel.add(mainSplitPane, BorderLayout.CENTER);
 
-        // Setup interaction
+
         Utilities.setupScriptSelectionListener(scriptListPanel.getScriptsList(), scriptContentPanel.getChosenScriptArea());
 
         scriptContentPanel.setRunListener(scriptOutputPanel::updateOutput,

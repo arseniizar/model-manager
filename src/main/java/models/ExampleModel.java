@@ -4,10 +4,10 @@ import annotations.Bind;
 
 public class ExampleModel extends Model {
     @Bind
-    private double[] twKI, twKS, twINW, twEKS, twIMP; // growth rates
+    private double[] twKI, twKS, twINW, twEKS, twIMP;
     @Bind
-    private double[] KI, KS, INW, EKS, IMP, PKB; // economic indicators
-    private double temp; // auxiliary field, not bound to input/output
+    private double[] KI, KS, INW, EKS, IMP, PKB;
+    private double temp;
 
     public ExampleModel() {
         super("ExampleModel", "A test default model provided in the pdf file of the project");
