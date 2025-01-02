@@ -1,7 +1,6 @@
 # Script Manager with Model Integration
 
-This project is a Java-based GUI application designed for managing and executing scripts and models. Built using **Swing
-**, **RSyntaxTextArea** for syntax highlighting, and **FlatLaf** for modern UI themes, the application allows users to:
+This project is a Java-based GUI application designed for managing and executing scripts and models. Built using **Swing**, **RSyntaxTextArea** for syntax highlighting, and **FlatLaf** for modern UI themes, the application allows users to:
 
 - Select and view scripts.
 - Write and run custom scripts.
