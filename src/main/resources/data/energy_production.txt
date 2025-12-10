@@ -1,8 +1,0 @@
-LATA           2015    2016    2017    2018    2019
-growthSolar    1.02    1.03    1.04    1.05    1.06
-growthWind     1.01    1.02    1.03    1.04    1.05
-growthHydro    1.00    1.005   1.01    1.015   1.02
-solarEnergy    1000    1050    1100    1150    1200
-windEnergy     800     820     850     880     910
-hydroEnergy    600     610     620     630     640
-totalEnergy    2400    2480    2570    2660    2750

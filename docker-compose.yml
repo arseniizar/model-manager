@@ -1,0 +1,16 @@
+version: '3.8'
+services:
+  timescaledb:
+    image: timescale/timescaledb:latest-pg14
+    container_name: model_manager_db
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=user
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=simulations
+    volumes:
+      - timescale_data:/var/lib/postgresql/data
+
+volumes:
+  timescale_data:

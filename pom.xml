@@ -8,38 +8,30 @@
     <artifactId>ModelSimulator</artifactId>
     <version>1.0-SNAPSHOT</version>
 
+    <packaging>pom</packaging>
+
     <properties>
-        <maven.compiler.source>21</maven.compiler.source>
-        <maven.compiler.target>21</maven.compiler.target>
+        <maven.compiler.source>17</maven.compiler.source>
+        <maven.compiler.target>17</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <spring-boot.version>3.2.0</spring-boot.version>
     </properties>
-    <dependencies>
-        <dependency>
-            <groupId>com.formdev</groupId>
-            <artifactId>flatlaf</artifactId>
-            <version>3.5</version>
-        </dependency>
-        <dependency>
-            <groupId>com.formdev</groupId>
-            <artifactId>flatlaf-extras</artifactId>
-            <version>3.4</version>
-        </dependency>
-        <dependency>
-            <groupId>org.codehaus.groovy</groupId>
-            <artifactId>groovy</artifactId>
-            <version>3.0.22</version>
-        </dependency>
-        <dependency>
-            <groupId>com.fifesoft</groupId>
-            <artifactId>rsyntaxtextarea</artifactId>
-            <version>3.5.1</version>
-        </dependency>
-        <dependency>
-            <groupId>org.junit.jupiter</groupId>
-            <artifactId>junit-jupiter-engine</artifactId>
-            <version>5.5.2</version>
-            <scope>test</scope>
-        </dependency>
-    </dependencies>
+
+    <modules>
+        <module>ui-swing</module>
+        <module>backend</module>
+    </modules>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-dependencies</artifactId>
+                <version>${spring-boot.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
 
 </project>
