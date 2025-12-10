@@ -36,3 +36,6 @@ build/
 
 ### Mac OS ###
 .DS_Store
+
+collect_code.py
+all_code.txt
