@@ -1,5 +1,6 @@
 package org.example.backend.controller;
 
+import org.example.backend.dto.SimulationResponseDto;
 import org.example.backend.service.SimulationService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -20,9 +21,19 @@ public class SimulationController {
     public ResponseEntity<?> runSimulation(@RequestBody SimulationRequestDto request) {
         try {
             Long runId = simulationService.runSimulation(request);
-            return ResponseEntity.ok(Map.of("simulationRunId", runId));
+            SimulationResponseDto responseDto = new SimulationResponseDto(
+                    runId,
+                    "SUBMITTED",
+                    "Simulation run started successfully."
+            );
+            return ResponseEntity.ok(responseDto);
         } catch (Exception e) {
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+            SimulationResponseDto errorResponse = new SimulationResponseDto(
+                    null,
+                    "FAILED",
+                    e.getMessage()
+            );
+            return ResponseEntity.badRequest().body(errorResponse);
         }
     }
 }
