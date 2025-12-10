@@ -11,6 +11,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.function.Consumer;
 
+import static ui.AppConfig.RESULTS_PATH;
+
 public class ScriptListPanel {
 
     private final JList<String> scriptsJList;
@@ -79,7 +81,7 @@ public class ScriptListPanel {
                 String scriptName = selectedFile.getFileName().toString().replace(".groovy", "");
                 String timestamp = String.valueOf(System.currentTimeMillis());
                 String resultFileName = "res_" + scriptName + "_" + timestamp + ".txt";
-                String resultFilePath = "src/main/resources/results/" + resultFileName;
+                String resultFilePath = RESULTS_PATH + resultFileName;
                 Files.write(Path.of(resultFilePath), controller.getResultsAsTsv().getBytes());
 
 

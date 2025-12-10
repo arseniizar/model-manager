@@ -10,6 +10,8 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 
+import static ui.AppConfig.RESULTS_PATH;
+
 public class ResultsTab {
 
     private final JList<String> resultFilesList;
@@ -58,7 +60,7 @@ public class ResultsTab {
                 String selectedResult = resultFilesList.getSelectedValue();
                 if (selectedResult != null) {
                     try {
-                        String path = "src/main/resources/results/" + selectedResult;
+                        String path = RESULTS_PATH + selectedResult;
                         String content = Files.readString(Paths.get(path));
                         resultContentArea.setText(content);
                     } catch (IOException ex) {

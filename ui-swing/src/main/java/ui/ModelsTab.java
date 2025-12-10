@@ -11,6 +11,8 @@ import javax.swing.*;
 import java.awt.*;
 import java.io.InputStream;
 
+import static ui.AppConfig.DATA_PATH;
+
 public class ModelsTab {
     private ControllerManager controllerManager;
     private JList<String> modelsJList;
@@ -164,7 +166,7 @@ public class ModelsTab {
                 String selectedDataFile = dataJList.getSelectedValue();
                 if (selectedDataFile != null) {
                     try {
-                        controllerManager.getController().readDataFrom("src/main/resources/data/" + selectedDataFile);
+                        controllerManager.getController().readDataFrom(DATA_PATH + selectedDataFile);
 
 
 

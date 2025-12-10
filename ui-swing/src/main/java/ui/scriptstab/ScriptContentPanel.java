@@ -11,6 +11,8 @@ import org.fife.ui.rsyntaxtextarea.RSyntaxTextArea;
 import org.fife.ui.rtextarea.RTextScrollPane;
 import ui.Utilities;
 
+import static ui.AppConfig.RESULTS_PATH;
+
 public class ScriptContentPanel {
 
     private final RSyntaxTextArea chosenScriptArea;
@@ -111,7 +113,7 @@ public class ScriptContentPanel {
             }
             String timestamp = String.valueOf(System.currentTimeMillis());
             String resultFileName = "res_" + scriptName.replace(".groovy", "") + "_" + timestamp + ".txt";
-            String resultFilePath = "src/main/resources/results/" + resultFileName;
+            String resultFilePath = RESULTS_PATH + resultFileName;
             Files.write(Paths.get(resultFilePath), controller.getResultsAsTsv().getBytes());
 
             scriptOutputListener.accept("Script executed successfully:\n" + controller.getResultsAsTsv());
@@ -181,7 +183,7 @@ public class ScriptContentPanel {
                 scriptName += ".txt";
             }
             String resultFileName = "res_" + scriptName.replace(".txt", "") + "_" + timestamp + ".txt";
-            String resultFilePath = "src/main/resources/results/" + resultFileName;
+            String resultFilePath = RESULTS_PATH + resultFileName;
             Files.write(Paths.get(resultFilePath), controller.getResultsAsTsv().getBytes());
 
             scriptOutputListener.accept("Script executed successfully:\n" + controller.getResultsAsTsv());

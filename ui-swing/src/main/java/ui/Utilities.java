@@ -25,12 +25,13 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 import java.util.List;
 
+import static ui.AppConfig.*;
+
 
 public class Utilities {
-
     public static DefaultListModel<String> loadModelList() {
         DefaultListModel<String> modelList = new DefaultListModel<>();
-        File modelsFolder = new File("src/main/java/models");
+        File modelsFolder = new File(MODELS_PATH);
         if (modelsFolder.exists() && modelsFolder.isDirectory()) {
             for (File file : Objects.requireNonNull(modelsFolder.listFiles((dir, name) -> name.endsWith(".java")))) {
                 String modelName = file.getName().replace(".java", "");
@@ -44,7 +45,7 @@ public class Utilities {
 
     public static DefaultListModel<String> loadDataList() {
         DefaultListModel<String> dataList = new DefaultListModel<>();
-        File dataFolder = new File("src/main/resources/data/");
+        File dataFolder = new File(DATA_PATH);
         if (dataFolder.exists() && dataFolder.isDirectory()) {
             for (File file : Objects.requireNonNull(dataFolder.listFiles((dir, name) -> name.endsWith(".txt")))) {
                 dataList.addElement(file.getName());
@@ -55,7 +56,7 @@ public class Utilities {
 
     public static DefaultListModel<String> loadResultsList() {
         DefaultListModel<String> resultsList = new DefaultListModel<>();
-        File resultsFolder = new File("src/main/resources/results/");
+        File resultsFolder = new File(RESULTS_PATH);
         if (resultsFolder.exists() && resultsFolder.isDirectory()) {
             for (File file : Objects.requireNonNull(resultsFolder.listFiles((dir, name) -> name.endsWith(".txt")))) {
                 resultsList.addElement(file.getName());
@@ -67,7 +68,7 @@ public class Utilities {
 
     public static DefaultListModel<String> loadScriptList() {
         DefaultListModel<String> scriptList = new DefaultListModel<>();
-        File scriptsFolder = new File("src/main/resources/scripts/");
+        File scriptsFolder = new File(SCRIPTS_PATH);
         if (scriptsFolder.exists() && scriptsFolder.isDirectory()) {
             for (File file : Objects.requireNonNull(scriptsFolder.listFiles((dir, name) -> name.endsWith(".groovy")))) {
                 scriptList.addElement(file.getName());
@@ -172,7 +173,7 @@ public class Utilities {
                 String selectedModel = modelsJList.getSelectedValue();
                 if (selectedModel != null) {
                     try {
-                        String path = "src/main/java/models/" + selectedModel + ".java";
+                        String path = MODELS_PATH + selectedModel + ".java";
                         String code = Files.lines(Paths.get(path)).collect(Collectors.joining("\n"));
 
                         controller.setModel(selectedModel);
@@ -205,7 +206,7 @@ public class Utilities {
                 if (selectedData != null) {
                     try {
 
-                        String path = "src/main/resources/data/" + selectedData;
+                        String path = DATA_PATH + selectedData;
                         controller.setCurrentDataPath(path);
 
 
@@ -260,7 +261,7 @@ public class Utilities {
                 String selectedScript = scriptsJList.getSelectedValue();
                 if (selectedScript != null) {
                     try {
-                        String path = "src/main/resources/scripts/" + selectedScript;
+                        String path = SCRIPTS_PATH + selectedScript;
                         List<String> lines = Files.readAllLines(Paths.get(path));
 
                         // Find the first meaningful line (excluding package and empty lines)
@@ -308,7 +309,7 @@ public class Utilities {
 
         try {
             // Load all scripts in the directory
-            Path scriptsDir = Paths.get("src/main/resources/scripts");
+            Path scriptsDir = Paths.get(SCRIPTS_PATH);
             Files.list(scriptsDir)
                     .filter(Files::isRegularFile)
                     .map(Path::getFileName)
@@ -365,7 +366,7 @@ public class Utilities {
                 try {
                     String fullScript = "package scripts\n\n" + scriptContent;
 
-                    String outputPath = "src/main/resources/scripts/" + scriptName;
+                    String outputPath = SCRIPTS_PATH + scriptName;
                     Files.write(Paths.get(outputPath), fullScript.getBytes());
 
                     JOptionPane.showMessageDialog(

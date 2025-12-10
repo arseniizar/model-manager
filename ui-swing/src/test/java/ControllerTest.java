@@ -5,6 +5,7 @@ import java.io.File;
 import java.lang.reflect.Field;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static ui.AppConfig.DATA_PATH;
 
 import controller.Controller;
 
@@ -107,7 +108,7 @@ class ControllerTest {
 
     @Test
     void testReadDataFromFile() throws Exception {
-        String testFilePath = "src/test/resources/data/test_data.txt";
+        String testFilePath = DATA_PATH + "test_data.txt";
         File testFile = new File(testFilePath);
 
         assertTrue(testFile.exists(), "Test data file does not exist.");
