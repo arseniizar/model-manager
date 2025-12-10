@@ -43,53 +43,65 @@ public class ActionPanel {
     }
 
     private void handleRunModel() {
-        new SwingWorker<String, Void>() {
-            @Override
-            protected String doInBackground() throws Exception {
-                String modelName = controller.getModel().getClass().getSimpleName();
-                int ll = (int) controller.getBindFieldValue("LL");
+        try {
+            int ll = (int) controller.getBindFieldValue("LL");
+            if (ll <= 0) {
+                showMessage("Please load data first by clicking 'Read from Data' before running the model.", "Data Not Loaded", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
 
-                Map<String, double[]> inputData = collectInputArrays();
+            new SwingWorker<String, Void>() {
+                @Override
+                protected String doInBackground() throws Exception {
+                    String modelName = controller.getModel().getClass().getSimpleName();
+                    int ll = (int) controller.getBindFieldValue("LL");
 
-                Map<String, Object> requestDto = new HashMap<>();
-                requestDto.put("modelName", modelName);
-                requestDto.put("ll", ll);
-                requestDto.put("inputData", inputData);
+                    Map<String, double[]> inputData = collectInputArrays();
 
-                String jsonBody = objectMapper.writeValueAsString(requestDto);
+                    Map<String, Object> requestDto = new HashMap<>();
+                    requestDto.put("modelName", modelName);
+                    requestDto.put("ll", ll);
+                    requestDto.put("inputData", inputData);
 
-                RequestBody body = RequestBody.create(jsonBody, JSON);
+                    String jsonBody = objectMapper.writeValueAsString(requestDto);
 
-                String apiUrl = ConfigLoader.getInstance().getBackendApiUrl();
-                if (apiUrl == null || apiUrl.isEmpty()) {
-                    throw new IOException("Backend API URL is not configured in config.properties");
-                }
+                    RequestBody body = RequestBody.create(jsonBody, JSON);
 
-                Request request = new Request.Builder()
-                        .url(apiUrl + "/run")
-                        .post(body)
-                        .build();
-
-                try (Response response = httpClient.newCall(request).execute()) {
-                    String responseBodyString = response.body().string();
-                    if (!response.isSuccessful()) {
-                        throw new IOException("Server returned error: " + response.code() + " - " + responseBodyString);
+                    String apiUrl = ConfigLoader.getInstance().getBackendApiUrl();
+                    if (apiUrl == null || apiUrl.isEmpty()) {
+                        throw new IOException("Backend API URL is not configured in config.properties");
                     }
-                    return responseBodyString;
-                }
-            }
 
-            @Override
-            protected void done() {
-                try {
-                    String responseBody = get();
-                    showMessage("Simulation started successfully!\nResponse: " + responseBody, "Success", JOptionPane.INFORMATION_MESSAGE);
-                } catch (Exception ex) {
-                    showMessage("Error running model: \n" + ex.getCause().getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
-                    ex.printStackTrace();
+                    Request request = new Request.Builder()
+                            .url(apiUrl + "/run")
+                            .post(body)
+                            .build();
+
+                    try (Response response = httpClient.newCall(request).execute()) {
+                        String responseBodyString = response.body().string();
+                        if (!response.isSuccessful()) {
+                            throw new IOException("Server returned error: " + response.code() + " - " + responseBodyString);
+                        }
+                        return responseBodyString;
+                    }
                 }
-            }
-        }.execute();
+
+                @Override
+                protected void done() {
+                    try {
+                        String responseBody = get();
+                        showMessage("Simulation started successfully!\nResponse: " + responseBody, "Success", JOptionPane.INFORMATION_MESSAGE);
+                    } catch (Exception ex) {
+                        showMessage("Error running model: \n" + ex.getCause().getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+                        ex.printStackTrace();
+                    }
+                }
+            }.execute();
+
+        } catch (Exception ex) {
+            showMessage("An unexpected error occurred: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+            ex.printStackTrace();
+        }
     }
 
     private Map<String, double[]> collectInputArrays() throws Exception {
