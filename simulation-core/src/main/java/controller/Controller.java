@@ -8,10 +8,8 @@ import java.util.*;
 import java.util.function.BiFunction;
 
 import annotations.Bind;
-import com.formdev.flatlaf.FlatDarkLaf;
 import groovy.lang.Binding;
 import groovy.lang.GroovyShell;
-import ui.UI;
 
 public class Controller {
     private Object model;
@@ -312,26 +310,5 @@ public class Controller {
             }
         }
         return null;
-    }
-
-
-    public static void main(String[] args) {
-        FlatDarkLaf.setup();
-        SwingUtilities.invokeLater(() -> {
-            UI ui = new UI();
-            ui.setVisible(true);
-
-            JOptionPane.showMessageDialog(
-                    ui,
-                    """
-                            Welcome!
-                            
-                            ExampleModel was selected as the default and has been executed.
-                            data1.txt was selected as the default and loaded successfully.
-                            """,
-                    "Welcome",
-                    JOptionPane.INFORMATION_MESSAGE
-            );
-        });
     }
 }

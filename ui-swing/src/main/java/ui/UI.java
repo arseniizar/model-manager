@@ -54,4 +54,20 @@ public class UI extends JFrame {
         SwingUtilities.invokeLater(() -> modelsTab.selectDefaultModel("ExampleModel"));
         SwingUtilities.invokeLater(() -> modelsTab.selectDefaultData("data1.txt"));
     }
+
+    public static void main(String[] args) {
+        FlatDarkLaf.setup();
+
+        SwingUtilities.invokeLater(() -> {
+            UI ui = new UI();
+            ui.setVisible(true);
+
+            JOptionPane.showMessageDialog(
+                    ui,
+                    "Welcome to the Model and Script Manager!",
+                    "Welcome",
+                    JOptionPane.INFORMATION_MESSAGE
+            );
+        });
+    }
 }
