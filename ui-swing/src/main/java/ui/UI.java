@@ -1,6 +1,7 @@
 package ui;
 
 import com.formdev.flatlaf.FlatDarkLaf;
+import com.formdev.flatlaf.themes.FlatMacDarkLaf;
 import com.formdev.flatlaf.extras.FlatSVGIcon;
 import ui.resultstab.ResultsTab;
 import ui.scriptstab.ConfigurationPanel;
@@ -56,7 +57,20 @@ public class UI extends JFrame {
     }
 
     public static void main(String[] args) {
-        FlatDarkLaf.setup();
+        String osName = System.getProperty("os.name").toLowerCase();
+
+        try {
+            if (osName.contains("mac")) {
+                System.setProperty("apple.awt.application.appearance", "NSAppearanceNameDarkAqua");
+                UIManager.setLookAndFeel(new FlatMacDarkLaf());
+                System.out.println("macOS detected. Applying FlatMacDarkLaf.");
+            } else {
+                UIManager.setLookAndFeel(new FlatDarkLaf());
+                System.out.println("OS detected: " + osName + ". Applying FlatDarkLaf.");
+            }
+        } catch (Exception ex) {
+            System.err.println("Failed to initialize LaF");
+        }
 
         SwingUtilities.invokeLater(() -> {
             UI ui = new UI();
