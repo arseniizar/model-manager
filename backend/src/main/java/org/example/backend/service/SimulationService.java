@@ -11,8 +11,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 public class SimulationService {
@@ -99,5 +101,12 @@ public class SimulationService {
             }
         }
         return results;
+    }
+
+    public List<SimulationRun> findAllCompletedRuns() {
+        return runRepository.findAll().stream()
+                .filter(run -> "COMPLETED".equals(run.getStatus()))
+                .sorted(Comparator.comparing(SimulationRun::getStartTime).reversed())
+                .collect(Collectors.toList());
     }
 }

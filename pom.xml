@@ -21,6 +21,7 @@
         <module>ui-swing</module>
         <module>backend</module>
         <module>simulation-core</module>
+        <module>simulation-api</module>
     </modules>
 
     <dependencyManagement>

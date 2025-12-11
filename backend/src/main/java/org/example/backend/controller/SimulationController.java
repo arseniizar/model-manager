@@ -1,10 +1,13 @@
 package org.example.backend.controller;
 
 import org.example.backend.dto.SimulationResponseDto;
+import org.example.backend.entity.SimulationRun;
 import org.example.backend.service.SimulationService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.example.backend.dto.SimulationRequestDto;
+
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -35,5 +38,11 @@ public class SimulationController {
             );
             return ResponseEntity.badRequest().body(errorResponse);
         }
+    }
+
+    @GetMapping("/runs")
+    public ResponseEntity<List<SimulationRun>> getAllRuns() {
+        List<SimulationRun> runs = simulationService.findAllCompletedRuns();
+        return ResponseEntity.ok(runs);
     }
 }

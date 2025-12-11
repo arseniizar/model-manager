@@ -1,15 +1,26 @@
 package ui;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.formdev.flatlaf.extras.FlatSVGIcon;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.Response;
 import org.fife.ui.rsyntaxtextarea.RSyntaxTextArea;
 import org.fife.ui.rsyntaxtextarea.SyntaxConstants;
 import org.fife.ui.rsyntaxtextarea.Theme;
 import org.fife.ui.rtextarea.RTextScrollPane;
+import simulation.api.dto.SimulationRunDto;
 import ui.scriptstab.ControllerManager;
 
 import javax.swing.*;
 import java.awt.*;
+import java.io.File;
+import java.io.IOException;
 import java.io.InputStream;
+import java.util.Arrays;
+import java.util.Objects;
+import java.util.List;
+import java.util.stream.Collectors;
 
 import static ui.AppConfig.DATA_PATH;
 
@@ -27,9 +38,11 @@ public class ModelsTab {
 
         this.controllerManager = controllerManager;
 
-        this.dataJList = new JList<>(Utilities.loadDataList());
-        dataJList.setCellRenderer(new CustomCellRenderers.DataCellRenderer());
+        this.dataJList = new JList<>();
+        dataJList.setCellRenderer(new GroupedListCellRenderer());
         dataJList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+
+        loadDataIntoList();
 
         JPanel rightPanel = createRightPanel(modelsJList, dataJList);
 
@@ -54,6 +67,62 @@ public class ModelsTab {
         modelsPanel.add(actionPanel.createPanel(), BorderLayout.SOUTH);
 
         return modelsPanel;
+    }
+
+    private void loadDataIntoList() {
+        DefaultListModel<String> listModel = new DefaultListModel<>();
+
+        listModel.addElement("---HEADER_OS---");
+        File dataFolder = new File(AppConfig.DATA_PATH);
+        if (dataFolder.exists() && dataFolder.isDirectory()) {
+            for (File file : Objects.requireNonNull(dataFolder.listFiles((dir, name) -> name.endsWith(".txt")))) {
+                listModel.addElement(file.getName());
+            }
+        }
+
+        listModel.addElement("---HEADER_DB---");
+
+        new SwingWorker<List<String>, Void>() {
+            @Override
+            protected List<String> doInBackground() throws Exception {
+                OkHttpClient client = new OkHttpClient();
+                ObjectMapper objectMapper = new ObjectMapper();
+
+                String apiUrl = ConfigLoader.getInstance().getBackendApiUrl() + "/runs";
+                Request request = new Request.Builder().url(apiUrl).build();
+
+                try (Response response = client.newCall(request).execute()) {
+                    if (!response.isSuccessful()) {
+                        throw new IOException("Failed to load runs from server: " + response);
+                    }
+
+                    SimulationRunDto[] runs = objectMapper.readValue(response.body().string(), SimulationRunDto[].class);
+
+                    return Arrays.stream(runs)
+                            .map(run -> String.format("Run #%d: %s", run.getId(), run.getModelName()))
+                            .collect(Collectors.toList());
+                }
+            }
+
+            @Override
+            protected void done() {
+                try {
+                    List<String> dbRuns = get();
+                    if (dbRuns.isEmpty()) {
+                        listModel.addElement(" (No runs found in DB)");
+                    } else {
+                        for (String runName : dbRuns) {
+                            listModel.addElement(runName);
+                        }
+                    }
+                } catch (Exception e) {
+                    listModel.addElement(" (Error loading from DB)");
+                    e.printStackTrace();
+                }
+            }
+        }.execute();
+
+        dataJList.setModel(listModel);
     }
 
     private JPanel createRightPanel(JList<String> modelsJList, JList<String> dataJList) {
@@ -167,10 +236,6 @@ public class ModelsTab {
                 if (selectedDataFile != null) {
                     try {
                         controllerManager.getController().readDataFrom(DATA_PATH + selectedDataFile);
-
-
-
-
 
 
                     } catch (Exception ex) {
