@@ -7,6 +7,7 @@ import groovy.lang.GroovyShell;
 import org.fife.ui.rsyntaxtextarea.RSyntaxTextArea;
 import org.fife.ui.rsyntaxtextarea.SyntaxConstants;
 import org.fife.ui.rsyntaxtextarea.Theme;
+import simulation.api.dto.SimulationRunDto;
 
 import javax.swing.*;
 import javax.swing.table.DefaultTableCellRenderer;
@@ -20,7 +21,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 import java.util.List;
@@ -163,28 +166,32 @@ public class Utilities {
         }
     }
 
-
     public static void setupModelSelectionListener(
-            JList<String> modelsJList, JPanel descriptionPanel, RSyntaxTextArea modelCodeArea,
-            Controller controller, JTextArea descriptionArea) {
+            JList<Object> modelsJList,
+            JPanel descriptionPanel,
+            RSyntaxTextArea modelCodeArea,
+            Controller controller,
+            JTextArea descriptionArea) {
 
         modelsJList.addListSelectionListener(e -> {
             if (!e.getValueIsAdjusting()) {
-                String selectedModel = modelsJList.getSelectedValue();
-                if (selectedModel != null) {
+                Object selectedItem = modelsJList.getSelectedValue();
+
+                if (selectedItem instanceof String selectedModel) {
                     try {
-                        String path = MODELS_PATH + selectedModel + ".java";
-                        String code = Files.lines(Paths.get(path)).collect(Collectors.joining("\n"));
-
                         controller.setModel(selectedModel);
-
-
                         descriptionArea.setText(controller.getModelDescription());
 
-
-                        modelCodeArea.setText(code);
+                        String codePath = AppConfig.MODELS_PATH + selectedModel + ".java";
+                        try {
+                            String code = Files.readString(Paths.get(codePath));
+                            modelCodeArea.setText(code);
+                        } catch (IOException ex) {
+                            modelCodeArea.setText("// Could not load source file from: " + codePath + "\n" +
+                                    "// Source code is located in the 'simulation-core' module.");
+                        }
                     } catch (Exception ex) {
-                        descriptionArea.setText("Could not load model description.");
+                        descriptionArea.setText("Could not load model description for " + selectedModel);
                         modelCodeArea.setText("Could not load model code.");
                         ex.printStackTrace();
                     }
@@ -196,58 +203,66 @@ public class Utilities {
         });
     }
 
-
-    public static void setupDataSelectionListener(JList<String> dataJList, JPanel dataContentPanel, Controller controller) {
-        JTable dataTable = (JTable) dataContentPanel.getClientProperty("dataTable");
+    public static void setupDataSelectionListener(
+            JList<Object> dataJList,
+            JPanel dataContentPanel,
+            Controller controller,
+            Map<String, SimulationRunDto> dbRunsMap) {
 
         dataJList.addListSelectionListener(e -> {
             if (!e.getValueIsAdjusting()) {
-                String selectedData = dataJList.getSelectedValue();
-                if (selectedData != null) {
+                Object selectedItem = dataJList.getSelectedValue();
+
+                if (!(selectedItem instanceof String)) {
+                    updateDataContentPanel(dataContentPanel, new String[0][0], new String[0]);
+                    return;
+                }
+
+                String selectedText = (String) selectedItem;
+
+                if (selectedText.startsWith("Run #")) {
+                    SimulationRunDto selectedRun = dbRunsMap.get(selectedText);
+                    if (selectedRun != null) {
+
+                        String[][] data = {
+                                {"ID:", String.valueOf(selectedRun.getId())},
+                                {"Model:", selectedRun.getModelName()},
+                                {"Started:", selectedRun.getStartTime().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))},
+                                {"Status:", selectedRun.getStatus()}
+                        };
+                        String[] columnNames = {"Property", "Value"};
+
+                        updateDataContentPanel(dataContentPanel, data, columnNames);
+                        JOptionPane.showMessageDialog(null,
+                                "Loading full results for past runs is not yet implemented.\n" +
+                                        "This would require a new backend endpoint: GET /api/simulations/" + selectedRun.getId() + "/results",
+                                "Feature not implemented",
+                                JOptionPane.INFORMATION_MESSAGE);
+                    }
+
+                }
+                else if (!selectedText.startsWith("---") && !selectedText.contains(" (")) {
                     try {
-
-                        String path = DATA_PATH + selectedData;
+                        String path = AppConfig.getDataFilePath(selectedText);
                         controller.setCurrentDataPath(path);
-
 
                         List<String> lines = Files.readAllLines(Paths.get(path));
                         if (!lines.isEmpty()) {
-                            // Extract column headers from the first line
                             String[] columnNames = lines.get(0).split("\\s+");
-
-                            // Extract the rest of the lines as data rows
                             List<String[]> rows = new ArrayList<>();
                             for (int i = 1; i < lines.size(); i++) {
                                 rows.add(lines.get(i).split("\\s+"));
                             }
-
-                            // Convert rows to a 2D array
                             String[][] data = rows.toArray(new String[0][]);
-
-                            // Update the table content
                             updateDataContentPanel(dataContentPanel, data, columnNames);
                         } else {
-                            // If the file is empty, clear the table
                             updateDataContentPanel(dataContentPanel, new String[0][0], new String[0]);
                         }
                     } catch (IOException ex) {
-                        JOptionPane.showMessageDialog(
-                                null,
-                                "Could not load data file: " + ex.getMessage(),
-                                "Error",
-                                JOptionPane.ERROR_MESSAGE
-                        );
-                    } catch (Exception ex) {
-                        JOptionPane.showMessageDialog(
-                                null,
-                                "Error reading data from " + selectedData + ":\n" + ex.getMessage(),
-                                "Error",
-                                JOptionPane.ERROR_MESSAGE
-                        );
-                        throw new RuntimeException(ex);
+                        JOptionPane.showMessageDialog(null, "Could not load data file: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
                     }
-                } else {
-                    // Clear the table when no data file is selected
+                }
+                else {
                     updateDataContentPanel(dataContentPanel, new String[0][0], new String[0]);
                 }
             }

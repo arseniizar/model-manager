@@ -1,6 +1,7 @@
 package ui;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.formdev.flatlaf.extras.FlatSVGIcon;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
@@ -17,8 +18,8 @@ import java.awt.*;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.Arrays;
-import java.util.Objects;
+import java.time.format.DateTimeFormatter;
+import java.util.*;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -26,22 +27,21 @@ import static ui.AppConfig.DATA_PATH;
 
 public class ModelsTab {
     private ControllerManager controllerManager;
-    private JList<String> modelsJList;
-    private JList<String> dataJList;
+    private JList<Object> modelsJList;
+    private JList<Object> dataJList;
+    private Map<String, SimulationRunDto> dbRunsMap = new HashMap<>();
 
     public JPanel createPanel(ControllerManager controllerManager) {
-        JPanel modelsPanel = new JPanel(new BorderLayout());
+        this.controllerManager = controllerManager;
 
-        modelsJList = new JList<>(Utilities.loadModelList());
+        modelsJList = new JList<>();
         modelsJList.setCellRenderer(new CustomCellRenderers.ModelCellRenderer());
         modelsJList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-
-        this.controllerManager = controllerManager;
+        loadModelsIntoList();
 
         this.dataJList = new JList<>();
         dataJList.setCellRenderer(new GroupedListCellRenderer());
         dataJList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-
         loadDataIntoList();
 
         JPanel rightPanel = createRightPanel(modelsJList, dataJList);
@@ -61,6 +61,7 @@ public class ModelsTab {
         JSplitPane mainSplitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, leftPanel, rightPanel);
         mainSplitPane.setResizeWeight(0.15);
 
+        JPanel modelsPanel = new JPanel(new BorderLayout());
         modelsPanel.add(mainSplitPane, BorderLayout.CENTER);
 
         ActionPanel actionPanel = new ActionPanel(controllerManager.getController());
@@ -69,8 +70,17 @@ public class ModelsTab {
         return modelsPanel;
     }
 
+    private void loadModelsIntoList() {
+        DefaultListModel<Object> model = new DefaultListModel<>();
+        DefaultListModel<String> loadedModels = Utilities.loadModelList();
+        for (int i = 0; i < loadedModels.size(); i++) {
+            model.addElement(loadedModels.getElementAt(i));
+        }
+        modelsJList.setModel(model);
+    }
+
     private void loadDataIntoList() {
-        DefaultListModel<String> listModel = new DefaultListModel<>();
+        DefaultListModel<Object> listModel = new DefaultListModel<>();
 
         listModel.addElement("---HEADER_OS---");
         File dataFolder = new File(AppConfig.DATA_PATH);
@@ -82,11 +92,12 @@ public class ModelsTab {
 
         listModel.addElement("---HEADER_DB---");
 
-        new SwingWorker<List<String>, Void>() {
+        new SwingWorker<List<SimulationRunDto>, Void>() {
             @Override
-            protected List<String> doInBackground() throws Exception {
+            protected List<SimulationRunDto> doInBackground() throws Exception {
                 OkHttpClient client = new OkHttpClient();
                 ObjectMapper objectMapper = new ObjectMapper();
+                objectMapper.registerModule(new JavaTimeModule());
 
                 String apiUrl = ConfigLoader.getInstance().getBackendApiUrl() + "/runs";
                 Request request = new Request.Builder().url(apiUrl).build();
@@ -95,24 +106,24 @@ public class ModelsTab {
                     if (!response.isSuccessful()) {
                         throw new IOException("Failed to load runs from server: " + response);
                     }
-
                     SimulationRunDto[] runs = objectMapper.readValue(response.body().string(), SimulationRunDto[].class);
-
-                    return Arrays.stream(runs)
-                            .map(run -> String.format("Run #%d: %s", run.getId(), run.getModelName()))
-                            .collect(Collectors.toList());
+                    return Arrays.asList(runs);
                 }
             }
 
             @Override
             protected void done() {
                 try {
-                    List<String> dbRuns = get();
+                    List<SimulationRunDto> dbRuns = get();
                     if (dbRuns.isEmpty()) {
                         listModel.addElement(" (No runs found in DB)");
                     } else {
-                        for (String runName : dbRuns) {
-                            listModel.addElement(runName);
+                        dbRunsMap.clear();
+                        for (SimulationRunDto run : dbRuns) {
+                            String displayName = String.format("Run #%d: %s (%s)", run.getId(), run.getModelName(),
+                                    run.getStartTime().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")));
+                            dbRunsMap.put(displayName, run);
+                            listModel.addElement(displayName);
                         }
                     }
                 } catch (Exception e) {
@@ -125,7 +136,7 @@ public class ModelsTab {
         dataJList.setModel(listModel);
     }
 
-    private JPanel createRightPanel(JList<String> modelsJList, JList<String> dataJList) {
+    private JPanel createRightPanel(JList<Object> modelsJList, JList<Object> dataJList) {
         JTextArea descriptionArea = new JTextArea();
         JPanel descriptionPanel = Utilities.createDescriptionPanel(descriptionArea);
 
@@ -138,16 +149,14 @@ public class ModelsTab {
         JSplitPane rightSplitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, descriptionSplitPane, codePanel);
         rightSplitPane.setResizeWeight(0.25);
 
-
         Utilities.setupModelSelectionListener(modelsJList, descriptionPanel,
                 (RSyntaxTextArea) ((RTextScrollPane) codePanel.getComponent(1)).getViewport().getView(),
                 controllerManager.getController(), descriptionArea);
 
-        Utilities.setupDataSelectionListener(dataJList, dataContentPanel, controllerManager.getController());
+        Utilities.setupDataSelectionListener(dataJList, dataContentPanel, controllerManager.getController(), dbRunsMap);
 
         JPanel rightPanel = new JPanel(new BorderLayout());
         rightPanel.add(rightSplitPane, BorderLayout.CENTER);
-
 
         return rightPanel;
     }
@@ -179,7 +188,7 @@ public class ModelsTab {
 
     public void selectDefaultModel(String defaultModelName) {
         SwingUtilities.invokeLater(() -> {
-            ListModel<String> listModel = modelsJList.getModel();
+            ListModel<Object> listModel = modelsJList.getModel();
             int targetIndex = -1;
 
 
@@ -192,7 +201,7 @@ public class ModelsTab {
 
             if (targetIndex != -1) {
                 modelsJList.setSelectedIndex(targetIndex);
-                String selectedModel = modelsJList.getSelectedValue();
+                String selectedModel = modelsJList.getSelectedValue().toString();
                 if (selectedModel != null) {
                     try {
                         controllerManager.getController().setModel(selectedModel);
@@ -219,7 +228,7 @@ public class ModelsTab {
 
     public void selectDefaultData(String defaultDataFileName) {
         SwingUtilities.invokeLater(() -> {
-            ListModel<String> listModel = dataJList.getModel();
+            ListModel<Object> listModel = dataJList.getModel();
             int targetIndex = -1;
 
 
@@ -232,7 +241,7 @@ public class ModelsTab {
 
             if (targetIndex != -1) {
                 dataJList.setSelectedIndex(targetIndex);
-                String selectedDataFile = dataJList.getSelectedValue();
+                String selectedDataFile = dataJList.getSelectedValue().toString();
                 if (selectedDataFile != null) {
                     try {
                         controllerManager.getController().readDataFrom(DATA_PATH + selectedDataFile);
