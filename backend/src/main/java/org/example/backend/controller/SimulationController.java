@@ -49,7 +49,7 @@ public class SimulationController {
     }
 
     @GetMapping("/{runId}/results")
-    public ResponseEntity<List<SimulationResultDto>> getResultsForRun(@PathVariable Long runId) {
+    public ResponseEntity<List<SimulationResultDto>> getResultsForRun(@PathVariable("runId") Long runId) {
         try {
             List<SimulationResultDto> results = simulationService.findResultsByRunId(runId);
             return ResponseEntity.ok(results);

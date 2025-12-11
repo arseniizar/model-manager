@@ -1,12 +1,17 @@
 package ui;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.formdev.flatlaf.extras.FlatSVGIcon;
 import controller.Controller;
 import groovy.lang.Binding;
 import groovy.lang.GroovyShell;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.Response;
 import org.fife.ui.rsyntaxtextarea.RSyntaxTextArea;
 import org.fife.ui.rsyntaxtextarea.SyntaxConstants;
 import org.fife.ui.rsyntaxtextarea.Theme;
+import simulation.api.dto.SimulationResultDto;
 import simulation.api.dto.SimulationRunDto;
 
 import javax.swing.*;
@@ -22,11 +27,9 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.Map;
-import java.util.Objects;
-import java.util.stream.Collectors;
+import java.util.*;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import static ui.AppConfig.*;
 
@@ -223,25 +226,46 @@ public class Utilities {
                 if (selectedText.startsWith("Run #")) {
                     SimulationRunDto selectedRun = dbRunsMap.get(selectedText);
                     if (selectedRun != null) {
+                        String[][] loadingData = {{"Loading..."}};
+                        String[] loadingColumns = {"Status"};
+                        updateDataContentPanel(dataContentPanel, loadingData, loadingColumns);
 
-                        String[][] data = {
-                                {"ID:", String.valueOf(selectedRun.getId())},
-                                {"Model:", selectedRun.getModelName()},
-                                {"Started:", selectedRun.getStartTime().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))},
-                                {"Status:", selectedRun.getStatus()}
-                        };
-                        String[] columnNames = {"Property", "Value"};
+                        new SwingWorker<Map<String, Object>, Void>() {
+                            @Override
+                            protected Map<String, Object> doInBackground() throws Exception {
+                                OkHttpClient client = new OkHttpClient();
+                                ObjectMapper objectMapper = new ObjectMapper();
 
-                        updateDataContentPanel(dataContentPanel, data, columnNames);
-                        JOptionPane.showMessageDialog(null,
-                                "Loading full results for past runs is not yet implemented.\n" +
-                                        "This would require a new backend endpoint: GET /api/simulations/" + selectedRun.getId() + "/results",
-                                "Feature not implemented",
-                                JOptionPane.INFORMATION_MESSAGE);
+                                String apiUrl = ConfigLoader.getInstance().getBackendApiUrl() + "/" + selectedRun.getId() + "/results";
+                                Request request = new Request.Builder().url(apiUrl).build();
+
+                                try (Response response = client.newCall(request).execute()) {
+                                    if (!response.isSuccessful()) {
+                                        throw new IOException("Failed to load results for run #" + selectedRun.getId() + ": " + response);
+                                    }
+
+                                    SimulationResultDto[] results = objectMapper.readValue(response.body().string(), SimulationResultDto[].class);
+
+                                    return transformResultsForTable(results);
+                                }
+                            }
+
+                            @Override
+                            protected void done() {
+                                try {
+                                    Map<String, Object> tableData = get();
+                                    String[] columnNames = (String[]) tableData.get("columns");
+                                    String[][] data = (String[][]) tableData.get("data");
+                                    updateDataContentPanel(dataContentPanel, data, columnNames);
+                                } catch (Exception ex) {
+                                    JOptionPane.showMessageDialog(null, "Error loading results from DB: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+                                    ex.printStackTrace();
+                                }
+                            }
+                        }.execute();
+
                     }
-
-                }
-                else if (!selectedText.startsWith("---") && !selectedText.contains(" (")) {
+                } else if (!selectedText.startsWith("---") && !selectedText.contains(" (")) {
                     try {
                         String path = AppConfig.getDataFilePath(selectedText);
                         controller.setCurrentDataPath(path);
@@ -261,12 +285,44 @@ public class Utilities {
                     } catch (IOException ex) {
                         JOptionPane.showMessageDialog(null, "Could not load data file: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
                     }
-                }
-                else {
+                } else {
                     updateDataContentPanel(dataContentPanel, new String[0][0], new String[0]);
                 }
             }
         });
+    }
+
+    private static Map<String, Object> transformResultsForTable(SimulationResultDto[] results) {
+        if (results == null || results.length == 0) {
+            return Map.of("columns", new String[0], "data", new String[0][0]);
+        }
+
+        List<String> varNames = Arrays.stream(results).map(SimulationResultDto::getVariableName).distinct().sorted().collect(Collectors.toList());
+        int maxTimeStep = Arrays.stream(results).mapToInt(SimulationResultDto::getTimeStep).max().orElse(0);
+
+        String[] columnNames = new String[maxTimeStep + 2];
+        columnNames[0] = "LATA";
+        for (int i = 0; i <= maxTimeStep; i++) {
+            columnNames[i + 1] = String.valueOf(2015 + i);
+        }
+
+        Map<String, double[]> dataMap = new HashMap<>();
+        for (SimulationResultDto res : results) {
+            dataMap.computeIfAbsent(res.getVariableName(), k -> new double[maxTimeStep + 1]);
+            dataMap.get(res.getVariableName())[res.getTimeStep()] = res.getValue();
+        }
+
+        String[][] data = new String[varNames.size()][maxTimeStep + 2];
+        for (int i = 0; i < varNames.size(); i++) {
+            String varName = varNames.get(i);
+            data[i][0] = varName;
+            double[] values = dataMap.get(varName);
+            for (int j = 0; j < values.length; j++) {
+                data[i][j + 1] = String.valueOf(values[j]);
+            }
+        }
+
+        return Map.of("columns", columnNames, "data", data);
     }
 
 
