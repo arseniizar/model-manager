@@ -10,6 +10,16 @@ public class SimulationRunDto {
     private LocalDateTime startTime;
     private String status;
 
+    public SimulationRunDto(Long id, String modelName, LocalDateTime startTime, String status) {
+        this.id = id;
+        this.modelName = modelName;
+        this.startTime = startTime;
+        this.status = status;
+    }
+
+    public SimulationRunDto() {
+    }
+
     public Long getId() {
         return id;
     }

@@ -2,10 +2,12 @@ package org.example.backend.controller;
 
 import org.example.backend.dto.SimulationResponseDto;
 import org.example.backend.entity.SimulationRun;
+import org.example.backend.exception.ResourceNotFoundException;
 import org.example.backend.service.SimulationService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.example.backend.dto.SimulationRequestDto;
+import simulation.api.dto.SimulationResultDto;
 
 import java.util.List;
 import java.util.Map;
@@ -44,5 +46,15 @@ public class SimulationController {
     public ResponseEntity<List<SimulationRun>> getAllRuns() {
         List<SimulationRun> runs = simulationService.findAllCompletedRuns();
         return ResponseEntity.ok(runs);
+    }
+
+    @GetMapping("/{runId}/results")
+    public ResponseEntity<List<SimulationResultDto>> getResultsForRun(@PathVariable Long runId) {
+        try {
+            List<SimulationResultDto> results = simulationService.findResultsByRunId(runId);
+            return ResponseEntity.ok(results);
+        } catch (ResourceNotFoundException e) {
+            return ResponseEntity.notFound().build();
+        }
     }
 }

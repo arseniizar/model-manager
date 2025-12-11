@@ -4,10 +4,12 @@ import controller.Controller;
 import org.example.backend.dto.SimulationRequestDto;
 import org.example.backend.entity.SimulationResult;
 import org.example.backend.entity.SimulationRun;
+import org.example.backend.exception.ResourceNotFoundException;
 import org.example.backend.repository.SimulationResultRepository;
 import org.example.backend.repository.SimulationRunRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import simulation.api.dto.SimulationResultDto;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -108,5 +110,26 @@ public class SimulationService {
                 .filter(run -> "COMPLETED".equals(run.getStatus()))
                 .sorted(Comparator.comparing(SimulationRun::getStartTime).reversed())
                 .collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    public List<SimulationResultDto> findResultsByRunId(Long runId) {
+        if (!runRepository.existsById(runId)) {
+            throw new ResourceNotFoundException("SimulationRun not found with id: " + runId);
+        }
+
+        List<SimulationResult> results = resultRepository.findBySimulationRunId(runId);
+
+        return results.stream()
+                .map(this::convertToDto)
+                .collect(Collectors.toList());
+    }
+
+    private SimulationResultDto convertToDto(SimulationResult result) {
+        SimulationResultDto dto = new SimulationResultDto();
+        dto.setVariableName(result.getVariableName());
+        dto.setTimeStep(result.getTimeStep());
+        dto.setValue(result.getValue());
+        return dto;
     }
 }
