@@ -1,96 +1,94 @@
-# Script Manager with Model Integration
+# Model Simulator & Scripting Platform
 
-This project is a Java-based GUI application designed for managing and executing scripts and models. Built using **Swing**, **RSyntaxTextArea** for syntax highlighting, and **FlatLaf** for modern UI themes, the application allows users to:
+Java platform for running dynamic simulations, featuring a Spring Boot backend with a TimescaleDB/PostgreSQL database, core simulation engine, and Swing-based desktop UI for scripting and data visualization.
 
-- Select and view scripts.
-- Write and run custom scripts.
-- Execute chosen scripts on a model.
-- View output and results in a structured format.
+## Screenshots
 
-## Features
+![Application Screenshot](./assets/1.png)
+![Application Screenshot](./assets/2.png)
+![Application Screenshot](./assets/3.png)
 
-- **Script Management**:
-    - View and edit chosen scripts.
-    - Write new custom scripts with syntax highlighting.
-    - Run scripts with a single click.
+## Functionality
 
-- **Model Integration**:
-    - Choose a model to bind scripts and data.
-    - View results in a tabular format.
+- **Multi-Module Architecture**: The project uses a Maven multi-module setup (`backend`, `simulation-core`, `ui-swing`, `simulation-api`) for separation of concerns.
+- **REST Backend**: The Spring Boot backend provides a REST API for asynchronous simulation execution and results retrieval.
+- **Dockerized Database**: Includes a `docker-compose.yml` for a TimescaleDB instance, suitable for time-series simulation data.
+- **Groovy Scripting**: The Swing GUI integrates an `RSyntaxTextArea` editor to execute Groovy scripts against model parameters.
+- **Data Integration**: The UI can load input data from local text files and display results from previous simulations fetched via the backend API.
+- **Desktop UI**: The client is built with Java Swing and uses the FlatLaf Dark theme.
 
-- **UI Highlights**:
-    - **FlatLaf Dark Theme** with SVG icons.
-    - Syntax highlighting for Groovy and Java using **RSyntaxTextArea**.
-    - Responsive panels with split layouts for better user experience.
+## Tech Stack
+
+- **Backend**: Java 17, Spring Boot 3, Spring Data JPA, Hibernate, PostgreSQL driver.
+- **Database**: Dockerized TimescaleDB / PostgreSQL.
+- **GUI**: Java Swing, FlatLaf, RSyntaxTextArea.
+- **API Client**: OkHttp3, Jackson.
+- **Core/Scripting**: Groovy.
+- **Build**: Apache Maven.
 
 ## Project Structure
 
-### Key Packages
+- **`simulation-api`**: DTOs for client-server communication.
+- **`simulation-core`**: Abstract simulation logic, model definitions (`@Bind` annotation), and the Groovy script execution controller.
+- **`backend`**: Spring Boot application exposing the simulation core via a REST API.
+- **`ui-swing`**: The desktop GUI for user interaction.
 
-- **`controller`**:
-    - Handles the interaction between scripts, data, and the model.
-    - Provides utilities for running scripts and models.
+## Getting Started
 
-- **`ui`**:
-    - Contains reusable components for the GUI.
-    - Split into subpackages for modularity:
-        - `ui.scriptstab`: Handles the scripts tab layout and interactions.
+### Prerequisites
+- Java (JDK) 17 or later.
+- Apache Maven 3.8+
+- Docker and Docker Compose.
+- An IDE like IntelliJ IDEA (recommended).
 
-- **`annotations`**:
-    - Custom annotations like `@Bind` for defining bindable fields in models.
+### How to Run
 
-### Components
+#### 1. Start the Database
+Launch the TimescaleDB container using Docker Compose. In the project root, run:
+```sh
+docker-compose up -d
+```
+This will start a database instance accessible on `localhost:5432`.
 
-1. **Script List Panel**:
-    - Displays available scripts with icons.
-    - Select scripts to view or edit.
+#### 2. Run the Application
+You can run the backend and frontend separately.
 
-2. **Script Content Panel**:
-    - Split into two sections:
-        - Chosen script (view-only).
-        - Writable script (editable).
+**Option A: Using IntelliJ IDEA (Recommended)**
+The project includes pre-configured run configurations.
+1.  **Start the Backend**: Select the `BackendApplication` run configuration and run.
+2.  **Start the GUI Client**: Once the backend is running, select the `UI` run configuration and run.
 
-3. **Script Output Panel**:
-    - Displays output from script execution.
+**Option B: Manual Execution (Command Line)**
+1.  **Build the project**:
+    ```sh
+    mvn clean install
+    ```
+2.  **Run the Backend** (in one terminal):
+    ```sh
+    cd backend
+    mvn spring-boot:run
+    ```
+3.  **Run the GUI Client** (in a new terminal):
+    ```sh
+    cd ui-swing
+    mvn exec:java
+    ```
 
-4. **Controller**:
-    - Core logic for running scripts and interacting with models and data.
+**Option C: Using the Development Script (Linux/macOS)**
+The project includes a convenience script `start-dev.sh` to launch the entire development environment (database, backend, and GUI).
 
-## Prerequisites
+1.  **Make the script executable** (only needs to be done once):
+    ```sh
+    chmod +x start-dev.sh
+    ```
+2.  **Run the script**:
+    ```sh
+    ./start-dev.sh
+    ```
+This will handle starting the Docker container, building the project, and launching both the backend server and the UI client.
 
-- **Java 11 or above**.
-- Maven for dependency management.
+## API Endpoints
 
-### Maven Dependencies
-
-The project uses the following dependencies:
-
-- **FlatLaf**: For modern, flat UI themes.
-- **RSyntaxTextArea**: For syntax highlighting.
-- **Groovy**: For executing Groovy scripts.
-
-Add the following to your `pom.xml`:
-
-```xml
-    <dependencies>
-        <dependency>
-            <groupId>com.formdev</groupId>
-            <artifactId>flatlaf</artifactId>
-            <version>3.5</version>
-        </dependency>
-        <dependency>
-            <groupId>com.formdev</groupId>
-            <artifactId>flatlaf-extras</artifactId>
-            <version>3.4</version>
-        </dependency>
-        <dependency>
-            <groupId>org.codehaus.groovy</groupId>
-            <artifactId>groovy</artifactId>
-            <version>3.0.22</version>
-        </dependency>
-        <dependency>
-            <groupId>com.fifesoft</groupId>
-            <artifactId>rsyntaxtextarea</artifactId>
-            <version>3.5.1</version>
-        </dependency>
-    </dependencies>
+- `POST /api/simulations/run`: Submits a new simulation for execution.
+- `GET /api/simulations/runs`: Returns a list of all completed simulation runs.
+- `GET /api/simulations/{runId}/results`: Returns the detailed results for a specific simulation run.

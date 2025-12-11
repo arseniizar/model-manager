@@ -39,3 +39,5 @@ build/
 
 collect_code.py
 all_code.txt
+analysis.sh
+project_analysis.txt
