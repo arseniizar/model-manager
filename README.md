@@ -74,7 +74,7 @@ The project includes pre-configured run configurations.
     mvn exec:java
     ```
 
-**Option C: Using the Development Script (Linux/macOS)**
+**Option C: Using the Development Script**
 The project includes a convenience script `start-dev.sh` to launch the entire development environment (database, backend, and GUI).
 
 1.  **Make the script executable** (only needs to be done once):
