@@ -1,10 +1,12 @@
 package org.example.backend.service;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import controller.Controller;
 import org.example.backend.dto.SimulationRequestDto;
 import org.example.backend.entity.SimulationResult;
 import org.example.backend.entity.SimulationRun;
 import org.example.backend.exception.ResourceNotFoundException;
+import org.example.backend.kafka.SimulationProducer;
 import org.example.backend.repository.SimulationResultRepository;
 import org.example.backend.repository.SimulationRunRepository;
 import org.springframework.stereotype.Service;
@@ -23,10 +25,39 @@ public class SimulationService {
 
     private final SimulationRunRepository runRepository;
     private final SimulationResultRepository resultRepository;
+    private final SimulationProducer simulationProducer;
 
-    public SimulationService(SimulationRunRepository runRepository, SimulationResultRepository resultRepository) {
+    public SimulationService(SimulationRunRepository runRepository,
+                             SimulationResultRepository resultRepository,
+                             SimulationProducer simulationProducer) {
         this.runRepository = runRepository;
         this.resultRepository = resultRepository;
+        this.simulationProducer = simulationProducer;
+    }
+
+    @Transactional
+    public Long queueSimulation(SimulationRequestDto simulationRequestDto) {
+        SimulationRun simulationRun = new SimulationRun();
+
+        simulationRun.setStartTime(LocalDateTime.now());
+        simulationRun.setModelName(simulationRequestDto.getModelName());
+        simulationRun.setStatus("QUEUED");
+        simulationRun =  runRepository.save(simulationRun);
+
+        simulationProducer.sendSimulationRequest(simulationRun.getId(),  simulationRequestDto);
+
+        return simulationRun.getId();
+    }
+
+    @Transactional
+    public void processSimulation(Long runId, SimulationRequestDto requestDto) {
+        SimulationRun simulationRun = runRepository.findById(runId)
+                .orElseThrow(() -> new ResourceNotFoundException("Simulation run not found"));
+
+        simulationRun.setStatus("RUNNING");
+        runRepository.save(simulationRun);
+
+        executeSimulationLogic(simulationRun, requestDto);
     }
 
     @Transactional
@@ -37,34 +68,34 @@ public class SimulationService {
         run.setStatus("RUNNING");
         run = runRepository.save(run);
 
+        executeSimulationLogic(run, requestDto);
+
+        return run.getId();
+    }
+
+    private void executeSimulationLogic(SimulationRun run, SimulationRequestDto requestDto) {
         try {
             Controller controller = new Controller(requestDto.getModelName());
-
             controller.setBindField("LL", requestDto.getLl());
-
             if (requestDto.getInputData() != null) {
                 for (Map.Entry<String, double[]> entry : requestDto.getInputData().entrySet()) {
                     controller.setBindField(entry.getKey(), entry.getValue());
                 }
             }
-
             controller.runModel();
 
             String resultsTsv = controller.getResultsAsTsv();
             List<SimulationResult> resultsToSave = parseAndPrepareResults(resultsTsv, run);
-
             resultRepository.saveAll(resultsToSave);
 
             run.setStatus("COMPLETED");
             runRepository.save(run);
 
-            return run.getId();
-
         } catch (Exception e) {
             run.setStatus("FAILED");
             runRepository.save(run);
-
-            throw new RuntimeException("Simulation failed for model '" + requestDto.getModelName() + "'. Reason: " + e.getMessage(), e);
+            System.err.println("Simulation failed for runId " + run.getId() + ". Reason: " + e.getMessage());
+            throw new RuntimeException("Simulation failed for model '" + requestDto.getModelName() + "'.", e);
         }
     }
 

@@ -25,17 +25,19 @@ public class SimulationController {
     @PostMapping("/run")
     public ResponseEntity<?> runSimulation(@RequestBody SimulationRequestDto request) {
         try {
-            Long runId = simulationService.runSimulation(request);
+            Long runId = simulationService.queueSimulation(request);
+
             SimulationResponseDto responseDto = new SimulationResponseDto(
                     runId,
-                    "SUBMITTED",
+                    "QUEUED",
                     "Simulation run started successfully."
             );
+
             return ResponseEntity.ok(responseDto);
         } catch (Exception e) {
             SimulationResponseDto errorResponse = new SimulationResponseDto(
                     null,
-                    "FAILED",
+                    "FAILED_TO_QUEUE",
                     e.getMessage()
             );
             return ResponseEntity.badRequest().body(errorResponse);
