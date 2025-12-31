@@ -30,13 +30,13 @@ class SimulationControllerTest {
     private SimulationService simulationService;
 
     @Test
-    void testRunSimulation_Success() throws Exception {
+    void testQueueSimulation_Success() throws Exception {
         SimulationRequestDto requestDto = new SimulationRequestDto();
         requestDto.setModelName("ExampleModel");
         requestDto.setLl(5);
         requestDto.setInputData(new HashMap<>());
 
-        when(simulationService.runSimulation(any(SimulationRequestDto.class))).thenReturn(1L);
+        when(simulationService.queueSimulation(any(SimulationRequestDto.class))).thenReturn(1L);
 
         mockMvc.perform(post("/api/simulations/run")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -44,24 +44,24 @@ class SimulationControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.simulationRunId").value(1L))
-                .andExpect(jsonPath("$.status").value("SUBMITTED"));
+                .andExpect(jsonPath("$.status").value("QUEUED"));
     }
 
     @Test
-    void testRunSimulation_ServiceFailure() throws Exception {
+    void testQueueSimulation_QueueingFailure() throws Exception {
         SimulationRequestDto requestDto = new SimulationRequestDto();
         requestDto.setModelName("BadModel");
         requestDto.setLl(5);
 
-        String errorMessage = "Simulation failed due to bad model";
-        when(simulationService.runSimulation(any(SimulationRequestDto.class)))
+        String errorMessage = "Failed to send message to Kafka";
+        when(simulationService.queueSimulation(any(SimulationRequestDto.class)))
                 .thenThrow(new RuntimeException(errorMessage));
 
         mockMvc.perform(post("/api/simulations/run")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(requestDto)))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.status").value("FAILED"))
+                .andExpect(jsonPath("$.status").value("FAILED_TO_QUEUE"))
                 .andExpect(jsonPath("$.message").value(errorMessage));
     }
 }
