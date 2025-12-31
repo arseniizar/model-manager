@@ -18,8 +18,15 @@ public class ScriptsTab {
     public ScriptsTab(ControllerManager controllerManager, ResultsTab resultsTab, ConfigurationPanel configurationPanel) {
         this.controllerManager = controllerManager;
         this.resultsTab = resultsTab;
-        this.scriptListPanel = new ScriptListPanel(controllerManager, resultsTab.getResultFilesList());
-        this.scriptContentPanel = new ScriptContentPanel(controllerManager, scriptListPanel.getScriptsList(), resultsTab.getResultFilesList());
+        this.scriptListPanel = new ScriptListPanel(controllerManager);
+
+        this.scriptContentPanel = new ScriptContentPanel(
+                controllerManager,
+                scriptListPanel.getScriptsList(),
+                scriptListPanel.getDbScriptsMap(),
+                scriptListPanel::loadScripts,
+                resultsTab::loadResults
+        );
         this.scriptOutputPanel = new ScriptOutputPanel();
         this.configurationPanel = configurationPanel;
     }
@@ -47,14 +54,7 @@ public class ScriptsTab {
         scriptsPanel.add(scriptListPanel.createPanel(scriptOutputPanel::updateOutput), BorderLayout.WEST);
         scriptsPanel.add(mainSplitPane, BorderLayout.CENTER);
 
-
-        Utilities.setupScriptSelectionListener(scriptListPanel.getScriptsList(), scriptContentPanel.getChosenScriptArea());
-
-        scriptContentPanel.setRunListener(scriptOutputPanel::updateOutput,
-                scriptListPanel.getScriptsList(),
-                resultsTab.getResultFilesList()
-        );
-
+        scriptContentPanel.setRunListener(scriptOutputPanel::updateOutput);
 
         return scriptsPanel;
     }

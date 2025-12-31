@@ -1,7 +1,16 @@
 package ui.resultstab;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.formdev.flatlaf.extras.FlatSVGIcon;
-import ui.CustomCellRenderers;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.Response;
+import simulation.api.dto.SavedResultDto;
+import ui.AppConfig;
+import ui.ConfigLoader;
+import ui.GroupedListCellRenderer;
 import ui.Utilities;
 
 import javax.swing.*;
@@ -9,15 +18,24 @@ import java.awt.*;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-
-import static ui.AppConfig.RESULTS_PATH;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 public class ResultsTab {
 
-    private final JList<String> resultFilesList;
+    private final JList<Object> resultFilesList;
+    private final JTextArea resultContentArea;
+    private final Map<String, SavedResultDto> dbResultsMap = new HashMap<>();
 
     public ResultsTab() {
-        this.resultFilesList = new JList<>(Utilities.loadResultsList());
+        this.resultFilesList = new JList<>();
+        this.resultFilesList.setCellRenderer(new GroupedListCellRenderer());
+        this.resultFilesList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+
+        this.resultContentArea = new JTextArea();
+        this.resultContentArea.setEditable(false);
+        this.resultContentArea.setFont(new Font("Monospaced", Font.PLAIN, 14));
     }
 
     public JPanel createPanel() {
@@ -28,50 +46,11 @@ public class ResultsTab {
         resultsHeader.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
         resultsHeader.setIcon(new FlatSVGIcon(getClass().getResource("/svgs/dir/projectDirectory_dark.svg")));
 
-        resultFilesList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-        resultFilesList.setFont(new Font("SansSerif", Font.PLAIN, 14));
-
-        resultFilesList.setCellRenderer(new DefaultListCellRenderer() {
-            private final Icon resultIcon = new FlatSVGIcon(getClass().getResource("/svgs/text/text_dark.svg"));
-
-            @Override
-            public Component getListCellRendererComponent(JList<?> list, Object value, int index, boolean isSelected, boolean cellHasFocus) {
-                JLabel label = (JLabel) super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
-                label.setIcon(resultIcon);
-                label.setBorder(BorderFactory.createEmptyBorder(2, 4, 2, 4));
-                return label;
-            }
-        });
-
-
         JScrollPane resultsScrollPane = new JScrollPane(resultFilesList);
-        resultsScrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
-        resultsScrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
-
-
-        JTextArea resultContentArea = new JTextArea();
-        resultContentArea.setEditable(false);
-        resultContentArea.setFont(new Font("SansSerif", Font.PLAIN, 14));
         JScrollPane contentScrollPane = new JScrollPane(resultContentArea);
 
-
-        resultFilesList.addListSelectionListener(e -> {
-            if (!e.getValueIsAdjusting()) {
-                String selectedResult = resultFilesList.getSelectedValue();
-                if (selectedResult != null) {
-                    try {
-                        String path = RESULTS_PATH + selectedResult;
-                        String content = Files.readString(Paths.get(path));
-                        resultContentArea.setText(content);
-                    } catch (IOException ex) {
-                        resultContentArea.setText("Could not load result file.");
-                    }
-                } else {
-                    resultContentArea.setText("");
-                }
-            }
-        });
-
+        setupResultSelectionListener();
+        loadResults(); // Початкове завантаження
 
         JSplitPane splitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, resultsScrollPane, contentScrollPane);
         splitPane.setResizeWeight(0.3);
@@ -82,8 +61,107 @@ public class ResultsTab {
         return resultsPanel;
     }
 
+    public void loadResults() {
+        DefaultListModel<Object> listModel = new DefaultListModel<>();
 
-    public JList<String> getResultFilesList() {
+        listModel.addElement("---HEADER_OS---");
+        DefaultListModel<String> fileResults = Utilities.loadResultsList();
+        for (int i = 0; i < fileResults.size(); i++) {
+            listModel.addElement(fileResults.getElementAt(i));
+        }
+
+        listModel.addElement("---HEADER_DB---");
+        new SwingWorker<List<SavedResultDto>, Void>() {
+            @Override
+            protected List<SavedResultDto> doInBackground() throws Exception {
+                OkHttpClient client = new OkHttpClient();
+                ObjectMapper objectMapper = new ObjectMapper().registerModule(new JavaTimeModule());
+                String apiUrl = ConfigLoader.getInstance().getBackendApiUrl().replace("/simulations", "/storage/results");
+                Request request = new Request.Builder().url(apiUrl).build();
+                try (Response response = client.newCall(request).execute()) {
+                    if (!response.isSuccessful()) throw new IOException("Failed to load results from DB: " + response.message());
+                    return objectMapper.readValue(response.body().string(), new TypeReference<List<SavedResultDto>>() {});
+                }
+            }
+
+            @Override
+            protected void done() {
+                try {
+                    List<SavedResultDto> dbResults = get();
+                    dbResultsMap.clear();
+                    if (dbResults.isEmpty()) {
+                        listModel.addElement(" (No results in DB)");
+                    } else {
+                        for (SavedResultDto result : dbResults) {
+                            String displayName = String.format("DB: %s (ID: %d)", result.getName(), result.getId());
+                            dbResultsMap.put(displayName, result);
+                            listModel.addElement(displayName);
+                        }
+                    }
+                } catch (Exception e) {
+                    listModel.addElement(" (Error loading from DB)");
+                    e.printStackTrace();
+                }
+                resultFilesList.setModel(listModel);
+            }
+        }.execute();
+    }
+
+    private void setupResultSelectionListener() {
+        resultFilesList.addListSelectionListener(e -> {
+            if (e.getValueIsAdjusting()) return;
+
+            Object selectedItem = resultFilesList.getSelectedValue();
+            resultContentArea.setText("");
+
+            if (!(selectedItem instanceof String selectedText)) return;
+
+            if (dbResultsMap.containsKey(selectedText)) {
+                loadResultContentFromDb(dbResultsMap.get(selectedText));
+            } else if (!selectedText.startsWith("---") && !selectedText.contains("(")) {
+                loadResultContentFromFile(selectedText);
+            }
+        });
+    }
+
+    private void loadResultContentFromDb(SavedResultDto resultInfo) {
+        resultContentArea.setText("Loading result from database...");
+        new SwingWorker<SavedResultDto, Void>() {
+            @Override
+            protected SavedResultDto doInBackground() throws Exception {
+                OkHttpClient client = new OkHttpClient();
+                ObjectMapper objectMapper = new ObjectMapper().registerModule(new JavaTimeModule());
+                String apiUrl = ConfigLoader.getInstance().getBackendApiUrl().replace("/simulations", "/storage/results/") + resultInfo.getId();
+                Request request = new Request.Builder().url(apiUrl).build();
+                try (Response response = client.newCall(request).execute()) {
+                    if (!response.isSuccessful()) throw new IOException("Failed to load result content: " + response.message());
+                    return objectMapper.readValue(response.body().string(), SavedResultDto.class);
+                }
+            }
+
+            @Override
+            protected void done() {
+                try {
+                    SavedResultDto fullResult = get();
+                    resultContentArea.setText(fullResult.getContent());
+                } catch (Exception ex) {
+                    resultContentArea.setText("// Error loading result content from DB: " + ex.getMessage());
+                }
+            }
+        }.execute();
+    }
+
+    private void loadResultContentFromFile(String fileName) {
+        try {
+            String path = AppConfig.getResultFilePath(fileName);
+            String content = Files.readString(Paths.get(path));
+            resultContentArea.setText(content);
+        } catch (IOException ex) {
+            resultContentArea.setText("// Could not load result file: " + ex.getMessage());
+        }
+    }
+
+    public JList<Object> getResultFilesList() {
         return resultFilesList;
     }
 }

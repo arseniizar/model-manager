@@ -1,30 +1,44 @@
 package ui.scriptstab;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.formdev.flatlaf.extras.FlatSVGIcon;
 import controller.Controller;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.Response;
+import simulation.api.dto.ScriptDto;
+import ui.ConfigLoader;
 import ui.CustomCellRenderers;
+import ui.GroupedListCellRenderer;
 import ui.Utilities;
 
 import javax.swing.*;
 import java.awt.*;
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.List;
+import java.util.Objects;
 import java.util.function.Consumer;
 
 import static ui.AppConfig.RESULTS_PATH;
 
 public class ScriptListPanel {
 
-    private final JList<String> scriptsJList;
+    private final JList<Object> scriptsJList;
     private final ControllerManager controllerManager;
-    private final JList<String> resultsJList;
+    private final Map<String, ScriptDto> dbScriptsMap = new HashMap<>();
 
-    public ScriptListPanel(ControllerManager controllerManager, JList<String> resultsJList) {
+    public ScriptListPanel(ControllerManager controllerManager) {
         this.controllerManager = controllerManager;
-        scriptsJList = new JList<>(Utilities.loadScriptList());
-        scriptsJList.setCellRenderer(new CustomCellRenderers.ScriptCellRenderer());
-        scriptsJList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-        this.resultsJList = resultsJList;
+
+        this.scriptsJList = new JList<>();
+        this.scriptsJList.setCellRenderer(new GroupedListCellRenderer());
+        this.scriptsJList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
     }
 
     public JPanel createPanel(Consumer<String> scriptOutputListener) {
@@ -45,7 +59,62 @@ public class ScriptListPanel {
         scriptsListPanel.add(headerPanel, BorderLayout.NORTH);
         scriptsListPanel.add(new JScrollPane(scriptsJList), BorderLayout.CENTER);
 
+        loadScripts();
+
         return scriptsListPanel;
+    }
+
+    public void loadScripts() {
+        DefaultListModel<Object> listModel = new DefaultListModel<>();
+
+        listModel.addElement("---HEADER_OS---");
+        DefaultListModel<String> fileScripts = Utilities.loadScriptList();
+        for (int i = 0; i < fileScripts.size(); i++) {
+            listModel.addElement(fileScripts.getElementAt(i));
+        }
+
+        listModel.addElement("---HEADER_DB---");
+
+        new SwingWorker<List<ScriptDto>, Void>() {
+            @Override
+            protected List<ScriptDto> doInBackground() throws Exception {
+                OkHttpClient client = new OkHttpClient();
+                ObjectMapper objectMapper = new ObjectMapper().registerModule(new JavaTimeModule());
+                String apiUrl = ConfigLoader.getInstance().getBackendApiUrl()
+                        .replace("/simulations", "/storage/scripts");
+                Request request = new Request.Builder().url(apiUrl).build();
+
+                try (Response response = client.newCall(request).execute()) {
+                    if (!response.isSuccessful()) {
+                        throw new IOException("Failed to load scripts from DB: " + response.message());
+                    }
+                    assert response.body() != null;
+                    return objectMapper.readValue(response.body().string(), new TypeReference<List<ScriptDto>>() {
+                    });
+                }
+            }
+
+            @Override
+            protected void done() {
+                try {
+                    List<ScriptDto> dbScripts = get();
+                    dbScriptsMap.clear();
+                    if (dbScripts.isEmpty()) {
+                        listModel.addElement(" (No scripts in DB)");
+                    } else {
+                        for (ScriptDto script : dbScripts) {
+                            String displayName = String.format("DB: %s (ID: %d)", script.getName(), script.getId());
+                            dbScriptsMap.put(displayName, script);
+                            listModel.addElement(displayName);
+                        }
+                    }
+                } catch (Exception e) {
+                    listModel.addElement(" (Error loading from DB)");
+                    e.printStackTrace();
+                }
+                scriptsJList.setModel(listModel);
+            }
+        }.execute();
     }
 
     private void openFileChooserAndRunScript(Consumer<String> scriptOutputListener) {
@@ -94,8 +163,6 @@ public class ScriptListPanel {
                         JOptionPane.INFORMATION_MESSAGE
                 );
 
-
-               Utilities.reloadResultsList(resultsJList);
             } catch (Exception ex) {
                 JOptionPane.showMessageDialog(
                         null,
@@ -108,7 +175,11 @@ public class ScriptListPanel {
         }
     }
 
-    public JList<String> getScriptsList() {
+    public JList<Object> getScriptsList() {
         return scriptsJList;
+    }
+
+    public Map<String, ScriptDto> getDbScriptsMap() {
+        return dbScriptsMap;
     }
 }
