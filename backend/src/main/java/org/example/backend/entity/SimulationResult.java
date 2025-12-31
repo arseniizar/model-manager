@@ -15,7 +15,7 @@ public class SimulationResult {
     private String variableName;
 
     @Column(columnDefinition = "double precision")
-    private double value;
+    private Double value;
 
     public SimulationResult() {
     }
