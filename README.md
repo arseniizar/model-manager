@@ -1,6 +1,6 @@
 # Model Simulator & Scripting Platform
 
-Java platform for running dynamic simulations, featuring a Spring Boot backend with a TimescaleDB/PostgreSQL database, core simulation engine, and Swing-based desktop UI for scripting and data visualization.
+Java platform for running dynamic simulations, featuring a Spring Boot backend with a TimescaleDB/PostgreSQL database and Apache Kafka, core simulation engine, and Swing-based desktop UI for scripting and data visualization.
 
 ## Screenshots
 
