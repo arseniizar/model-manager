@@ -108,8 +108,11 @@ class ControllerTest {
 
     @Test
     void testReadDataFromFile() throws Exception {
-        String testFilePath = DATA_PATH + "test_data.txt";
+        String TEST_DATA_PATH = "src/test/resources/data/";
+        String testFilePath = TEST_DATA_PATH + "test_data.txt";
         File testFile = new File(testFilePath);
+
+        System.out.println("testFile.getAbsolutePath() = " + testFile.getAbsolutePath());
 
         assertTrue(testFile.exists(), "Test data file does not exist.");
 
