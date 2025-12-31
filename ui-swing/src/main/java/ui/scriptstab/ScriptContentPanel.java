@@ -1,17 +1,25 @@
 package ui.scriptstab;
 
-import javax.swing.*;
-import java.awt.*;
-import java.nio.file.Files;
-import java.nio.file.Paths;
-import java.util.function.Consumer;
-
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import controller.Controller;
+import okhttp3.*;
 import org.fife.ui.rsyntaxtextarea.RSyntaxTextArea;
 import org.fife.ui.rtextarea.RTextScrollPane;
+import simulation.api.dto.SavedResultDto;
+import simulation.api.dto.ScriptDto;
+import ui.AppConfig;
+import ui.ConfigLoader;
 import ui.Utilities;
 
-import static ui.AppConfig.RESULTS_PATH;
+import javax.swing.*;
+import java.awt.*;
+import java.awt.event.ActionListener;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.util.Map;
+import java.util.function.Consumer;
 
 public class ScriptContentPanel {
 
@@ -22,51 +30,47 @@ public class ScriptContentPanel {
     private final ControllerManager controllerManager;
     private final JButton saveButton;
 
-    public ScriptContentPanel(ControllerManager controllerManager, JList<String> scriptsJList, JList<String> resultsJList) {
+    private final JList<Object> scriptsJList;
+    private final Map<String, ScriptDto> dbScriptsMap;
+    private final Runnable onSaveSuccess;
+    private final Runnable onResultSaveSuccess;
+
+    public ScriptContentPanel(ControllerManager controllerManager,
+                              JList<Object> scriptsJList,
+                              Map<String, ScriptDto> dbScriptsMap,
+                              Runnable onSaveSuccess,
+                              Runnable onResultSaveSuccess) {
         this.controllerManager = controllerManager;
-        chosenScriptArea = Utilities.createSyntaxTextArea();
-        writableScriptArea = Utilities.createSyntaxTextArea();
-        chosenRunButton = Utilities.createStyledRunButton();
-        writableRunButton = Utilities.createStyledRunButton();
-        saveButton = Utilities.createSaveButton("/svgs/shell/shell_dark.svg",
-                Utilities.createSaveScriptListener(writableScriptArea,
-                        () -> {
-                            scriptsJList.setModel(Utilities.loadScriptList());
-                        },
-                        () -> {
-                            resultsJList.setModel(Utilities.loadResultsList());
-                        }
-                ));
+        this.scriptsJList = scriptsJList;
+        this.dbScriptsMap = dbScriptsMap;
+        this.onSaveSuccess = onSaveSuccess;
+        this.onResultSaveSuccess = onResultSaveSuccess;
+
+        this.chosenScriptArea = Utilities.createSyntaxTextArea();
+        this.writableScriptArea = Utilities.createSyntaxTextArea();
+        this.chosenRunButton = Utilities.createStyledRunButton();
+        this.writableRunButton = Utilities.createStyledRunButton();
+        this.saveButton = Utilities.createSaveButton("/svgs/shell/shell_dark.svg", createSaveScriptListener());
 
         Utilities.setupSyntaxHighlighting(chosenScriptArea);
         Utilities.setupSyntaxHighlighting(writableScriptArea);
-
         chosenScriptArea.setEditable(false);
+
+        setupScriptSelectionListener();
     }
 
     public JPanel createPanel() {
-
         JPanel chosenScriptPanel = Utilities.createPanelWithHeader(
-                "Chosen Script Content",
-                "/svgs/groovy/groovy_dark.svg",
-                chosenRunButton,
-                new RTextScrollPane(chosenScriptArea)
-        );
-
+                "Chosen Script Content", "/svgs/groovy/groovy_dark.svg",
+                chosenRunButton, new RTextScrollPane(chosenScriptArea));
 
         JPanel writableScriptPanel = Utilities.createPanelWithHeader(
-                "Write a Script",
-                "/svgs/config/config_dark.svg",
-                writableRunButton,
-                saveButton,
-                new RTextScrollPane(writableScriptArea)
-        );
-
+                "Write a Script", "/svgs/config/config_dark.svg",
+                writableRunButton, saveButton, new RTextScrollPane(writableScriptArea));
 
         JSplitPane scriptSplitPane = new JSplitPane(JSplitPane.VERTICAL_SPLIT, chosenScriptPanel, writableScriptPanel);
         scriptSplitPane.setResizeWeight(0.5);
         scriptSplitPane.setDividerSize(8);
-
 
         JPanel mainContentPanel = new JPanel(new BorderLayout());
         mainContentPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
@@ -75,145 +79,173 @@ public class ScriptContentPanel {
         return mainContentPanel;
     }
 
-    public void setRunListener(Consumer<String> scriptOutputListener, JList<String> scriptsJList, JList<String> resultsJList) {
-        chosenRunButton.addActionListener(e -> handleChosenScript(scriptOutputListener, scriptsJList, resultsJList));
-        writableRunButton.addActionListener(e -> handleWritableScript(scriptOutputListener, resultsJList));
+    public void setRunListener(Consumer<String> scriptOutputListener) {
+        chosenRunButton.addActionListener(e -> handleRunScript(chosenScriptArea.getText(), scriptOutputListener));
+        writableRunButton.addActionListener(e -> handleRunScript(writableScriptArea.getText(), scriptOutputListener));
     }
 
-    private void handleChosenScript(Consumer<String> scriptOutputListener, JList<String> scriptsJList, JList<String> resultsJList) {
+    private void setupScriptSelectionListener() {
+        scriptsJList.addListSelectionListener(e -> {
+            if (e.getValueIsAdjusting()) return;
+
+            Object selectedItem = scriptsJList.getSelectedValue();
+            chosenScriptArea.setText(""); // Очищуємо поле перед завантаженням
+
+            if (!(selectedItem instanceof String selectedText)) return;
+
+            if (dbScriptsMap.containsKey(selectedText)) {
+                loadScriptFromDb(dbScriptsMap.get(selectedText));
+            } else if (!selectedText.startsWith("---") && !selectedText.contains("(")) {
+                loadScriptFromFile(selectedText);
+            }
+        });
+    }
+
+    private void loadScriptFromDb(ScriptDto scriptInfo) {
+        chosenScriptArea.setText("// Loading script from database...");
+        new SwingWorker<ScriptDto, Void>() {
+            @Override
+            protected ScriptDto doInBackground() throws Exception {
+                OkHttpClient client = new OkHttpClient();
+                ObjectMapper objectMapper = new ObjectMapper().registerModule(new JavaTimeModule());
+                String apiUrl = ConfigLoader.getInstance().getBackendApiUrl().replace("/simulations", "/storage/scripts/") + scriptInfo.getId();
+                Request request = new Request.Builder().url(apiUrl).build();
+                try (Response response = client.newCall(request).execute()) {
+                    if (!response.isSuccessful()) throw new IOException("Failed to load script content: " + response.message());
+                    return objectMapper.readValue(response.body().string(), ScriptDto.class);
+                }
+            }
+
+            @Override
+            protected void done() {
+                try {
+                    ScriptDto fullScript = get();
+                    chosenScriptArea.setText(fullScript.getContent());
+                } catch (Exception ex) {
+                    chosenScriptArea.setText("// Error loading script content from DB: " + ex.getMessage());
+                }
+            }
+        }.execute();
+    }
+
+    private void loadScriptFromFile(String fileName) {
         try {
-            String chosenScriptContent = chosenScriptArea.getText();
-
-            if (chosenScriptContent == null || chosenScriptContent.trim().isEmpty()) {
-                JOptionPane.showMessageDialog(
-                        null,
-                        "The chosen script is empty. Please select or write a valid script.",
-                        "Error",
-                        JOptionPane.ERROR_MESSAGE
-                );
-                return;
-            }
-
-            if (!isValidGroovyScript(chosenScriptContent)) {
-                JOptionPane.showMessageDialog(
-                        null,
-                        "The chosen script is invalid. Please fix syntax errors before running.",
-                        "Error",
-                        JOptionPane.ERROR_MESSAGE
-                );
-                return;
-            }
-
-            Controller controller = controllerManager.getController();
-            controller.runScript(chosenScriptContent);
-
-            String scriptName = scriptsJList.getSelectedValue();
-            if (scriptName == null || scriptName.isEmpty()) {
-                scriptName = "chosenScript";
-            }
-            String timestamp = String.valueOf(System.currentTimeMillis());
-            String resultFileName = "res_" + scriptName.replace(".groovy", "") + "_" + timestamp + ".txt";
-            String resultFilePath = RESULTS_PATH + resultFileName;
-            Files.write(Paths.get(resultFilePath), controller.getResultsAsTsv().getBytes());
-
-            scriptOutputListener.accept("Script executed successfully:\n" + controller.getResultsAsTsv());
-            JOptionPane.showMessageDialog(
-                    null,
-                    "Script executed successfully. Result saved as " + resultFileName,
-                    "Success",
-                    JOptionPane.INFORMATION_MESSAGE
-            );
-
-
-            Utilities.reloadResultsList(resultsJList);
-
-        } catch (Exception ex) {
-            scriptOutputListener.accept("Error running chosen script: " + ex.getMessage());
-            ex.printStackTrace();
+            String path = AppConfig.getScriptFilePath(fileName);
+            String content = Files.readString(Paths.get(path));
+            chosenScriptArea.setText(content);
+        } catch (IOException ex) {
+            chosenScriptArea.setText("// Could not load script file: " + ex.getMessage());
         }
     }
 
-    private void handleWritableScript(Consumer<String> scriptOutputListener, JList<String> resultsJList) {
-        try {
-            String writableScriptContent = writableScriptArea.getText();
-
-            if (writableScriptContent == null || writableScriptContent.trim().isEmpty()) {
-                JOptionPane.showMessageDialog(
-                        null,
-                        "The writable script is empty. Please write a valid script.",
-                        "Error",
-                        JOptionPane.ERROR_MESSAGE
-                );
+    private ActionListener createSaveScriptListener() {
+        return e -> {
+            String scriptContent = writableScriptArea.getText();
+            if (scriptContent.trim().isEmpty()) {
+                JOptionPane.showMessageDialog(null, "Script content cannot be empty.", "Warning", JOptionPane.WARNING_MESSAGE);
                 return;
             }
 
-            if (!isValidGroovyScript(writableScriptContent)) {
-                System.out.println("HELLOO???");
-                JOptionPane.showMessageDialog(
-                        null,
-                        "The writable script is invalid. Please fix syntax errors before running.",
-                        "Error",
-                        JOptionPane.ERROR_MESSAGE
-                );
-                return;
-            }
-
-            Controller controller = controllerManager.getController();
-            controller.runScript(writableScriptContent);
-
-            String scriptName = JOptionPane.showInputDialog(
-                    null,
-                    "Enter a name for the result file:",
-                    "Save Writable Script Result",
-                    JOptionPane.PLAIN_MESSAGE
-            );
-
+            String scriptName = JOptionPane.showInputDialog(null, "Enter the name for the script:", "Save Script", JOptionPane.PLAIN_MESSAGE);
             if (scriptName == null || scriptName.trim().isEmpty()) {
-                JOptionPane.showMessageDialog(
-                        null,
-                        "Result file name cannot be empty.",
-                        "Warning",
-                        JOptionPane.WARNING_MESSAGE
-                );
                 return;
             }
 
-            String timestamp = String.valueOf(System.currentTimeMillis());
-            if (!scriptName.endsWith(".txt")) {
-                scriptName += ".txt";
+            ScriptDto dto = new ScriptDto();
+            dto.setName(scriptName);
+            dto.setContent(scriptContent);
+
+            new SwingWorker<Void, Void>() {
+                @Override
+                protected Void doInBackground() throws Exception {
+                    OkHttpClient client = new OkHttpClient();
+                    ObjectMapper objectMapper = new ObjectMapper();
+                    String apiUrl = ConfigLoader.getInstance().getBackendApiUrl().replace("/simulations", "/storage/scripts");
+                    RequestBody body = RequestBody.create(
+                            objectMapper.writeValueAsString(dto),
+                            MediaType.get("application/json; charset=utf-8")
+                    );
+                    Request request = new Request.Builder().url(apiUrl).post(body).build();
+                    try (Response response = client.newCall(request).execute()) {
+                        if (!response.isSuccessful()) {
+                            throw new IOException("Failed to save script: " + response.body().string());
+                        }
+                    }
+                    return null;
+                }
+
+                @Override
+                protected void done() {
+                    try {
+                        get();
+                        JOptionPane.showMessageDialog(null, "Script saved to database successfully!", "Success", JOptionPane.INFORMATION_MESSAGE);
+                        onSaveSuccess.run();
+                    } catch (Exception ex) {
+                        JOptionPane.showMessageDialog(null, "Error saving script: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+                        ex.printStackTrace();
+                    }
+                }
+            }.execute();
+        };
+    }
+
+    private void handleRunScript(String scriptContent, Consumer<String> scriptOutputListener) {
+        if (scriptContent == null || scriptContent.trim().isEmpty()) {
+            JOptionPane.showMessageDialog(null, "Script is empty and cannot be run.", "Error", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        try {
+            Controller controller = controllerManager.getController();
+            controller.runScript(scriptContent);
+            String tsvResult = controller.getResultsAsTsv();
+
+            String resultName = JOptionPane.showInputDialog(null, "Enter a name for the result file:", "Save Result", JOptionPane.PLAIN_MESSAGE);
+            if (resultName != null && !resultName.trim().isEmpty()) {
+                saveResultToDb(resultName, tsvResult);
             }
-            String resultFileName = "res_" + scriptName.replace(".txt", "") + "_" + timestamp + ".txt";
-            String resultFilePath = RESULTS_PATH + resultFileName;
-            Files.write(Paths.get(resultFilePath), controller.getResultsAsTsv().getBytes());
 
-            scriptOutputListener.accept("Script executed successfully:\n" + controller.getResultsAsTsv());
-            JOptionPane.showMessageDialog(
-                    null,
-                    "Script executed successfully. Result saved as " + resultFileName,
-                    "Success",
-                    JOptionPane.INFORMATION_MESSAGE
-            );
-
-
-            Utilities.reloadResultsList(resultsJList);
+            scriptOutputListener.accept("Script executed successfully:\n" + tsvResult);
 
         } catch (Exception ex) {
-            scriptOutputListener.accept("Error running writable script: " + ex.getMessage());
+            scriptOutputListener.accept("Error running script: " + ex.getMessage());
             ex.printStackTrace();
         }
     }
 
-    private boolean isValidGroovyScript(String scriptContent) {
-        try {
-            new groovy.lang.GroovyShell().parse(scriptContent);
-            return true;
-        } catch (Exception ex) {
-            return false;
-        }
-    }
+    private void saveResultToDb(String name, String content) {
+        SavedResultDto dto = new SavedResultDto();
+        dto.setName(name);
+        dto.setContent(content);
 
-    public void updateSelectedScript(String scriptContent) {
-        chosenScriptArea.setText(scriptContent);
+        new SwingWorker<Void, Void>() {
+            @Override
+            protected Void doInBackground() throws Exception {
+                OkHttpClient client = new OkHttpClient();
+                ObjectMapper objectMapper = new ObjectMapper();
+                String apiUrl = ConfigLoader.getInstance().getBackendApiUrl().replace("/simulations", "/storage/results");
+                RequestBody body = RequestBody.create(objectMapper.writeValueAsString(dto), MediaType.get("application/json; charset=utf-8"));
+                Request request = new Request.Builder().url(apiUrl).post(body).build();
+                try (Response response = client.newCall(request).execute()) {
+                    if (!response.isSuccessful()) {
+                        throw new IOException("Failed to save result: " + response.body().string());
+                    }
+                }
+                return null;
+            }
+
+            @Override
+            protected void done() {
+                try {
+                    get();
+                    JOptionPane.showMessageDialog(null, "Result '" + name + "' saved to database.", "Success", JOptionPane.INFORMATION_MESSAGE);
+                    onResultSaveSuccess.run(); // Оновлюємо список результатів
+                } catch (Exception ex) {
+                    JOptionPane.showMessageDialog(null, "Error saving result: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+                    ex.printStackTrace();
+                }
+            }
+        }.execute();
     }
 
     public RSyntaxTextArea getChosenScriptArea() {
