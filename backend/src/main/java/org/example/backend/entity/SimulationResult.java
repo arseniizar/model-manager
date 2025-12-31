@@ -14,7 +14,7 @@ public class SimulationResult {
     private int timeStep;
     private String variableName;
 
-    @Column(columnDefinition = "double precision")
+    @Column(name = "simulation_value")
     private Double value;
 
     public SimulationResult() {
