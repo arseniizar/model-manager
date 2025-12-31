@@ -13,7 +13,9 @@ public class SimulationResult {
 
     private int timeStep;
     private String variableName;
-    private double value;
+
+    @Column(name = "value", nullable = false)
+    private Double value;
 
     public SimulationResult() {
     }
