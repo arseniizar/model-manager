@@ -15,7 +15,7 @@ Java platform for running dynamic simulations, featuring an event-driven Spring 
 - **Groovy Scripting**: An integrated `RSyntaxTextArea` editor allows users to write and execute Groovy scripts against model parameters.
 - **Persistent Storage**: All user-generated content, including scripts and simulation results, is persisted in a PostgreSQL/TimescaleDB database.
 - **Containerized Environment**: The entire application stack (Backend, Kafka, Database) is fully containerized using Docker.
-- **CI/CD Pipeline**: A GitHub Actions workflow automates testing, building, and publishing the backend's Docker image to Docker Hub.
+- **CI/CD Pipeline**: A GitHub Actions workflow automates the integration process. On every push, it builds the entire project and runs backend tests to ensure code quality and stability.
 - **Kubernetes Ready**: Includes Kubernetes manifests for deploying the application to a cluster environment like Minikube.
 - **Integration Testing**: Uses Testcontainers to run true-to-production integration tests against a real Kafka instance.
 
