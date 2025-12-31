@@ -1,6 +1,6 @@
 # Model Simulator & Scripting Platform
 
-Java platform for running dynamic simulations, featuring a Spring Boot backend with a TimescaleDB/PostgreSQL database and Apache Kafka, core simulation engine, and Swing-based desktop UI for scripting and data visualization.
+Java platform for running dynamic simulations, featuring an event-driven Spring Boot backend with Apache Kafka, a Dockerized TimescaleDB/PostgreSQL database, and a Swing-based desktop UI for scripting and data visualization. The project is fully containerized and includes configurations for CI/CD and Kubernetes deployment.
 
 ## Screenshots
 
@@ -10,74 +10,69 @@ Java platform for running dynamic simulations, featuring a Spring Boot backend w
 
 ## Functionality
 
-- **Multi-Module Architecture**: The project uses a Maven multi-module setup (`backend`, `simulation-core`, `ui-swing`, `simulation-api`) for separation of concerns.
-- **REST Backend**: The Spring Boot backend provides a REST API for asynchronous simulation execution and results retrieval.
-- **Dockerized Database**: Includes a `docker-compose.yml` for a TimescaleDB instance, suitable for time-series simulation data.
-- **Groovy Scripting**: The Swing GUI integrates an `RSyntaxTextArea` editor to execute Groovy scripts against model parameters.
-- **Data Integration**: The UI can load input data from local text files and display results from previous simulations fetched via the backend API.
-- **Desktop UI**: The client is built with Java Swing and uses the FlatLaf Dark theme.
+- **Multi-Module Architecture**: Maven multi-module setup (`backend`, `simulation-core`, `ui-swing`, `simulation-api`) for clear separation of concerns.
+- **Asynchronous Backend**: The Spring Boot backend uses Apache Kafka to process long-running simulations asynchronously, ensuring the UI remains responsive.
+- **Groovy Scripting**: An integrated `RSyntaxTextArea` editor allows users to write and execute Groovy scripts against model parameters.
+- **Persistent Storage**: All user-generated content, including scripts and simulation results, is persisted in a PostgreSQL/TimescaleDB database.
+- **Containerized Environment**: The entire application stack (Backend, Kafka, Database) is fully containerized using Docker.
+- **CI/CD Pipeline**: A GitHub Actions workflow automates testing, building, and publishing the backend's Docker image to Docker Hub.
+- **Kubernetes Ready**: Includes Kubernetes manifests for deploying the application to a cluster environment like Minikube.
+- **Integration Testing**: Uses Testcontainers to run true-to-production integration tests against a real Kafka instance.
 
 ## Tech Stack
 
-- **Backend**: Java 17, Spring Boot 3, Spring Data JPA, Hibernate, PostgreSQL driver, Spring Kafka.
+- **Backend**: Java 17, Spring Boot 3, Spring Data JPA, Hibernate, Spring Kafka, Spring Boot Actuator.
+- **Messaging / Event Streaming**: Apache Kafka.
 - **Database**: Dockerized TimescaleDB / PostgreSQL.
+- **Containerization & Orchestration**: Docker, Kubernetes (Minikube).
+- **CI/CD & DevOps**: GitHub Actions, Maven, Shell Scripting.
+- **Testing**: JUnit 5, Mockito, Testcontainers.
 - **GUI**: Java Swing, FlatLaf, RSyntaxTextArea.
 - **API Client**: OkHttp3, Jackson.
 - **Core/Scripting**: Groovy.
-- **Build**: Apache Maven.
 
 ## Project Structure
 
-- **`simulation-api`**: DTOs for client-server communication.
-- **`simulation-core`**: Abstract simulation logic, model definitions (`@Bind` annotation), and the Groovy script execution controller.
-- **`backend`**: Spring Boot application exposing the simulation core via a REST API.
-- **`ui-swing`**: The desktop GUI for user interaction.
+- `simulation-api`: DTOs for client-server communication.
+- `simulation-core`: Abstract simulation logic, model definitions, and the Groovy script execution controller.
+- `backend`: Spring Boot application exposing the simulation core via a REST API.
+- `ui-swing`: The desktop GUI for user interaction.
+- `.github/workflows`: CI/CD pipeline definitions for GitHub Actions.
+- `k8s`: Kubernetes manifests for deployment.
 
 ## Getting Started
 
 ### Prerequisites
+
 - Java (JDK) 17 or later.
 - Apache Maven 3.8+
 - Docker and Docker Compose.
 - An IDE like IntelliJ IDEA (recommended).
+- [Minikube](https://minikube.sigs.k8s.io/docs/start/) and [kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl/) (for Kubernetes deployment).
 
 ### How to Run
 
-#### 1. Start Infrastructure
-Launch the TimescaleDB and Kafka containers using Docker Compose. In the project root, run:
-```sh
-docker-compose up -d
-```
-This will start a database instance accessible on `localhost:5432` and a Kafka broker on `localhost:9092`.
+There are two primary ways to run the application: using Docker Compose for simple local setup, or deploying to a local Kubernetes cluster with the dev script.
 
-#### 2. Run the Application
-You can run the backend and frontend separately.
+#### Option A: Using Docker Compose (Simple)
 
-**Option A: Using IntelliJ IDEA (Recommended)**
-The project includes pre-configured run configurations.
-1.  **Start the Backend**: Select the `BackendApplication` run configuration and run.
-2.  **Start the GUI Client**: Once the backend is running, select the `UI` run configuration and run.
-
-**Option B: Manual Execution (Command Line)**
-1.  **Build the project**:
+1.  **Start Infrastructure**:
     ```sh
-    mvn clean install
+    docker-compose up -d
     ```
-2.  **Run the Backend** (in one terminal):
-    ```sh
-    cd backend
-    mvn spring-boot:run
-    ```
-3.  **Run the GUI Client** (in a new terminal):
-    ```sh
-    cd ui-swing
-    mvn exec:java
-    ```
+    This will start PostgreSQL and Kafka on `localhost`.
 
-**Option C: Using the Development Script**
-The project includes a convenience script `start-dev.sh` to launch the entire development environment (database, backend, and GUI).
+2.  **Run the Backend**:
+    Launch the `BackendApplication` run configuration in your IDE or run `mvn spring-boot:run` inside the `backend` directory.
 
-1.  **Make the script executable** (only needs to be done once):
+3.  **Run the GUI Client**:
+    Launch the `UI` run configuration in your IDE or run `mvn exec:java` inside the `ui-swing` directory.
+
+#### Option B: Using the Kubernetes Development Script (Advanced)
+
+The `start-dev.sh` script automates the entire process of building and deploying the application to a local Minikube cluster.
+
+1.  **Make the script executable**:
     ```sh
     chmod +x start-dev.sh
     ```
@@ -85,10 +80,23 @@ The project includes a convenience script `start-dev.sh` to launch the entire de
     ```sh
     ./start-dev.sh
     ```
-This will handle starting the Docker container, building the project, and launching both the backend server and the UI client.
+    This script will handle starting Minikube, building the Docker image, deploying all components to Kubernetes, and launching the UI.
 
 ## API Endpoints
 
-- `POST /api/simulations/run`: Submits a new simulation for execution.
-- `GET /api/simulations/runs`: Returns a list of all completed simulation runs.
-- `GET /api/simulations/{runId}/results`: Returns the detailed results for a specific simulation run.
+The backend provides a RESTful API for managing simulations, scripts, and results.
+
+### Simulations
+
+- `POST /api/simulations/run`: Submits a new simulation task to a Kafka topic for asynchronous execution. Returns immediately with a `QUEUED` status.
+- `GET /api/simulations/runs`: Returns a list of all simulation runs.
+- `GET /api/simulations/{runId}/results`: Returns the detailed time-series results for a specific simulation run.
+
+### Storage (Scripts & Results)
+
+- `POST /api/storage/scripts`: Creates a new script in the database.
+- `GET /api/storage/scripts`: Returns a list of all saved scripts (metadata only).
+- `GET /api/storage/scripts/{id}`: Retrieves a specific script by ID, including its full content.
+- `POST /api/storage/results`: Saves a new result to the database.
+- `GET /api/storage/results`: Returns a list of all saved results (metadata only).
+- `GET /api/storage/results/{id}`: Retrieves a specific result by ID, including its full content.
