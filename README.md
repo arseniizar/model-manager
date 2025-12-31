@@ -19,7 +19,7 @@ Java platform for running dynamic simulations, featuring a Spring Boot backend w
 
 ## Tech Stack
 
-- **Backend**: Java 17, Spring Boot 3, Spring Data JPA, Hibernate, PostgreSQL driver.
+- **Backend**: Java 17, Spring Boot 3, Spring Data JPA, Hibernate, PostgreSQL driver, Spring Kafka.
 - **Database**: Dockerized TimescaleDB / PostgreSQL.
 - **GUI**: Java Swing, FlatLaf, RSyntaxTextArea.
 - **API Client**: OkHttp3, Jackson.
@@ -43,12 +43,12 @@ Java platform for running dynamic simulations, featuring a Spring Boot backend w
 
 ### How to Run
 
-#### 1. Start the Database
-Launch the TimescaleDB container using Docker Compose. In the project root, run:
+#### 1. Start Infrastructure
+Launch the TimescaleDB and Kafka containers using Docker Compose. In the project root, run:
 ```sh
 docker-compose up -d
 ```
-This will start a database instance accessible on `localhost:5432`.
+This will start a database instance accessible on `localhost:5432` and a Kafka broker on `localhost:9092`.
 
 #### 2. Run the Application
 You can run the backend and frontend separately.
