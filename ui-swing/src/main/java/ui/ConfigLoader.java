@@ -30,6 +30,10 @@ public class ConfigLoader {
     }
 
     public String getBackendApiUrl() {
+        String apiUrlFromSystem = System.getProperty("backend.api.url");
+        if (apiUrlFromSystem != null && !apiUrlFromSystem.isEmpty()) {
+            return apiUrlFromSystem;
+        }
         return properties.getProperty("backend.api.url", "http://localhost:8080/api/simulations");
     }
 }
